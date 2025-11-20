@@ -1,23 +1,22 @@
 use anyhow::Result;
 use axum::{
-    extract::{Path, State},
+    extract::State,
     http::StatusCode,
     response::{Html, IntoResponse, Json},
     routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tower_http::services::ServeDir;
+use std::sync::{Arc, Mutex};
 use tower_http::trace::TraceLayer;
 
-use crate::git::GitRepo;
 use crate::state::StateManager;
 
 #[derive(Clone)]
 struct AppState {
-    git_repo: Arc<GitRepo>,
-    state_manager: Arc<StateManager>,
+    repo_path: String,
+    base_branch: String,
+    state_manager: Arc<Mutex<StateManager>>,
 }
 
 #[derive(Serialize)]
@@ -44,11 +43,17 @@ struct MarkViewedRequest {
 }
 
 pub async fn start(port: u16, base_branch: String) -> Result<()> {
-    let git_repo = Arc::new(GitRepo::open(".")?);
-    let state_manager = Arc::new(StateManager::new()?);
+    // Get repo path once at startup
+    use crate::git::GitRepo;
+    let git_repo = GitRepo::open(".")?;
+    let repo_path = git_repo.repo_path()?;
+    drop(git_repo); // Release the repository handle
+
+    let state_manager = Arc::new(Mutex::new(StateManager::new()?));
 
     let app_state = AppState {
-        git_repo,
+        repo_path,
+        base_branch: base_branch.clone(),
         state_manager,
     };
 
@@ -76,17 +81,24 @@ async fn index_handler() -> Html<&'static str> {
 }
 
 async fn diff_handler(State(state): State<AppState>) -> Result<Json<DiffResponse>, AppError> {
-    let current_branch = state.git_repo.current_branch()?;
-    let current_commit = state.git_repo.current_commit()?;
-    let repo_path = state.git_repo.repo_path()?;
+    use crate::git::GitRepo;
 
-    let files = state.git_repo.get_diff_files("main")?;
+    // Create a new GitRepo instance for this request
+    let git_repo = GitRepo::open(".")?;
+    let current_branch = git_repo.current_branch()?;
+    let current_commit = git_repo.current_commit()?;
+
+    let files = git_repo.get_diff_files(&state.base_branch)?;
 
     let mut file_diffs = Vec::new();
+    let state_manager = state.state_manager.lock().unwrap();
     for file in files {
-        let viewed = state
-            .state_manager
-            .is_file_viewed(&repo_path, &current_branch, &current_commit, &file.path)?;
+        let viewed = state_manager.is_file_viewed(
+            &state.repo_path,
+            &current_branch,
+            &current_commit,
+            &file.path,
+        )?;
 
         file_diffs.push(FileDiff {
             path: file.path,
@@ -97,12 +109,13 @@ async fn diff_handler(State(state): State<AppState>) -> Result<Json<DiffResponse
             viewed,
         });
     }
+    drop(state_manager);
 
     Ok(Json(DiffResponse {
         files: file_diffs,
         branch: current_branch,
         commit: current_commit,
-        repo_path,
+        repo_path: state.repo_path.clone(),
     }))
 }
 
@@ -110,12 +123,15 @@ async fn mark_viewed_handler(
     State(state): State<AppState>,
     Json(payload): Json<MarkViewedRequest>,
 ) -> Result<StatusCode, AppError> {
-    let current_branch = state.git_repo.current_branch()?;
-    let current_commit = state.git_repo.current_commit()?;
-    let repo_path = state.git_repo.repo_path()?;
+    use crate::git::GitRepo;
 
-    state.state_manager.mark_file_viewed(
-        &repo_path,
+    let git_repo = GitRepo::open(".")?;
+    let current_branch = git_repo.current_branch()?;
+    let current_commit = git_repo.current_commit()?;
+
+    let mut state_manager = state.state_manager.lock().unwrap();
+    state_manager.mark_file_viewed(
+        &state.repo_path,
         &current_branch,
         &current_commit,
         &payload.file_path,
@@ -132,10 +148,13 @@ struct StatusResponse {
 }
 
 async fn status_handler(State(state): State<AppState>) -> Result<Json<StatusResponse>, AppError> {
+    use crate::git::GitRepo;
+
+    let git_repo = GitRepo::open(".")?;
     Ok(Json(StatusResponse {
-        repo_path: state.git_repo.repo_path()?,
-        branch: state.git_repo.current_branch()?,
-        commit: state.git_repo.current_commit()?,
+        repo_path: state.repo_path.clone(),
+        branch: git_repo.current_branch()?,
+        commit: git_repo.current_commit()?,
     }))
 }
 

@@ -1,9 +1,9 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
+mod git;
 mod server;
 mod state;
-mod git;
 
 #[derive(Parser)]
 #[command(name = "guck")]

@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use git2::{DiffOptions, Repository};
-use std::path::PathBuf;
 
 pub struct GitRepo {
     repo: Repository,
