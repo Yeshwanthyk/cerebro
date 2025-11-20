@@ -208,7 +208,10 @@ async fn start_daemon(base_branch_override: Option<String>) -> Result<()> {
 
     // Get config
     let config = config::Config::load()?;
-    let base_branch = base_branch_override.unwrap_or(config.base_branch);
+    let base_branch = base_branch_override
+        .as_ref()
+        .map(|s| s.clone())
+        .unwrap_or(config.base_branch);
 
     // Find available port
     let port = daemon_manager.find_available_port()?;
@@ -238,7 +241,7 @@ async fn start_daemon(base_branch_override: Option<String>) -> Result<()> {
         let log_file = std::fs::File::create(&log_path)?;
 
         let mut cmd_args = vec!["daemon".to_string(), "start".to_string()];
-        if let Some(ref b) = base_branch_override {
+        if let Some(ref b) = &base_branch_override {
             cmd_args.push("--base".to_string());
             cmd_args.push(b.clone());
         }
