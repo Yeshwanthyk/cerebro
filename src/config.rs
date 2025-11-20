@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize)]
 pub struct Config {
     #[serde(default = "default_base_branch")]
     pub base_branch: String,
@@ -11,6 +11,14 @@ pub struct Config {
 
 fn default_base_branch() -> String {
     "main".to_string()
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            base_branch: default_base_branch(),
+        }
+    }
 }
 
 impl Config {
