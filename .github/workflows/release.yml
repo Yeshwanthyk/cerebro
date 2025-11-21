@@ -60,91 +60,81 @@ jobs:
       matrix:
         include:
           # Linux x86_64
-          - target: x86_64-unknown-linux-gnu
+          - target: linux-amd64
             os: ubuntu-latest
-            archive: tar.gz
+            goos: linux
+            goarch: amd64
 
           # Linux ARM64
-          - target: aarch64-unknown-linux-gnu
+          - target: linux-arm64
             os: ubuntu-latest
-            archive: tar.gz
+            goos: linux
+            goarch: arm64
 
           # macOS x86_64
-          - target: x86_64-apple-darwin
+          - target: darwin-amd64
             os: macos-latest
-            archive: tar.gz
+            goos: darwin
+            goarch: amd64
 
           # macOS ARM64
-          - target: aarch64-apple-darwin
+          - target: darwin-arm64
             os: macos-latest
-            archive: tar.gz
+            goos: darwin
+            goarch: arm64
 
           # Windows x86_64
-          - target: x86_64-pc-windows-msvc
+          - target: windows-amd64
             os: windows-latest
-            archive: zip
+            goos: windows
+            goarch: amd64
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Update Cargo.toml version
-        shell: bash
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
         run: |
           VERSION="${{ needs.check-release.outputs.new_version }}"
           VERSION="${VERSION#v}"
-          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-          rm Cargo.toml.bak 2>/dev/null || true
-          echo "Updated Cargo.toml to version $VERSION"
-          grep "^version = " Cargo.toml
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME="guck.exe"
+          else
+            BINARY_NAME="guck"
+          fi
 
-      - name: Install cross-compilation tools (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Build binary (Linux cross-compile)
-        if: runner.os == 'Linux'
-        run: |
-          cross build --release --target ${{ matrix.target }}
-
-      - name: Build binary (macOS/Windows)
-        if: runner.os != 'Linux'
-        run: |
-          cargo build --release --target ${{ matrix.target }}
+          go build -ldflags="-s -w -X main.Version=${VERSION}" -o "${BINARY_NAME}" .
+        shell: bash
 
       - name: Create archives
         shell: bash
         run: |
           VERSION="${{ needs.check-release.outputs.new_version }}"
           TARGET="${{ matrix.target }}"
-          ARCHIVE_FORMAT="${{ matrix.archive }}"
 
-          cd target/$TARGET/release
-
-          if [[ "$TARGET" == *"windows"* ]]; then
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
             BINARY="guck.exe"
           else
             BINARY="guck"
           fi
 
-          mkdir -p ../../../dist
-          DIST_DIR="$(pwd)/../../../dist"
-
+          mkdir -p dist
           ARCHIVE_NAME="guck-${VERSION}-${TARGET}"
 
-          case $ARCHIVE_FORMAT in
-            tar.gz)
-              tar czf "${DIST_DIR}/${ARCHIVE_NAME}.tar.gz" "$BINARY"
-              ;;
-            zip)
-              7z a "${DIST_DIR}/${ARCHIVE_NAME}.zip" "$BINARY"
-              ;;
-          esac
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            7z a "dist/${ARCHIVE_NAME}.zip" "$BINARY"
+          else
+            tar czf "dist/${ARCHIVE_NAME}.tar.gz" "$BINARY"
+          fi
 
       - name: Generate checksums
         shell: bash
@@ -186,15 +176,6 @@ jobs:
           pattern: guck-*
           merge-multiple: true
 
-      - name: Update Cargo.toml version
-        run: |
-          VERSION="${{ needs.check-release.outputs.new_version }}"
-          VERSION="${VERSION#v}"
-          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-          rm Cargo.toml.bak 2>/dev/null || true
-          echo "Updated Cargo.toml to version $VERSION"
-          grep "^version = " Cargo.toml
-
       - name: Generate changelog
         run: |
           VERSION="${{ needs.check-release.outputs.new_version }}"
@@ -231,8 +212,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Cargo.toml CHANGELOG.md
-          git commit -m "chore(release): bump version to ${{ needs.check-release.outputs.new_version }}"
-          git push
+          git add CHANGELOG.md
+          git commit -m "chore(release): bump version to ${{ needs.check-release.outputs.new_version }}" || true
+          git push || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

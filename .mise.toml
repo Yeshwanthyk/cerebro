@@ -1,2 +1,2 @@
 [tools]
-rust = "latest"
+go = "1.23"
