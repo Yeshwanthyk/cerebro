@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2025-11-21
+
+### 📚 Documentation
+
+- Update README.md for Go rewrite ([6d490e9](6d490e992ff2f8c2cb5612c9a70256554e81e78d))
+
 ## [0.1.0] - 2025-11-21
 
 ### 🐛 Bug Fixes
