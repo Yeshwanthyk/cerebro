@@ -246,37 +246,35 @@ async fn start_daemon(base_branch_override: Option<String>) -> Result<()> {
             cmd_args.push(b.clone());
         }
 
+        // Use nohup on Unix for proper daemonization
+        #[cfg(unix)]
         let child = {
-            #[cfg(unix)]
-            {
-                use std::os::unix::process::CommandExt;
-                use std::process::{Command, Stdio};
+            use std::process::{Command, Stdio};
 
-                // Spawn detached process
-                Command::new(exe)
-                    .args(&cmd_args)
-                    .env("GUCK_DAEMON", "1")
-                    .current_dir(&repo_path)
-                    .stdin(Stdio::null())
-                    .stdout(log_file.try_clone()?)
-                    .stderr(log_file)
-                    .process_group(0) // Create new process group
-                    .spawn()?
-            }
+            // Use nohup to detach from terminal
+            Command::new("nohup")
+                .arg(exe)
+                .args(&cmd_args)
+                .env("GUCK_DAEMON", "1")
+                .current_dir(&repo_path)
+                .stdin(Stdio::null())
+                .stdout(log_file.try_clone()?)
+                .stderr(log_file)
+                .spawn()?
+        };
 
-            #[cfg(not(unix))]
-            {
-                use std::process::{Command, Stdio};
+        #[cfg(not(unix))]
+        let child = {
+            use std::process::{Command, Stdio};
 
-                Command::new(exe)
-                    .args(&cmd_args)
-                    .env("GUCK_DAEMON", "1")
-                    .current_dir(&repo_path)
-                    .stdin(Stdio::null())
-                    .stdout(log_file.try_clone()?)
-                    .stderr(log_file)
-                    .spawn()?
-            }
+            Command::new(exe)
+                .args(&cmd_args)
+                .env("GUCK_DAEMON", "1")
+                .current_dir(&repo_path)
+                .stdin(Stdio::null())
+                .stdout(log_file.try_clone()?)
+                .stderr(log_file)
+                .spawn()?
         };
 
         // Give the daemon a moment to start and register
