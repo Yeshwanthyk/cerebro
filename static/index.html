@@ -94,6 +94,20 @@
                 align-items: center;
                 gap: 4px;
             }
+
+            .file-header-items {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+            }
+
+            .file-header-items > * {
+                padding-left: 8px !important;
+            }
+
+            .file-header-items > *:first-child {
+                padding-left: 0 !important;
+            }
         </style>
     </head>
     <body>
@@ -296,18 +310,18 @@
                                                     }
                                                 >
                                                     <div className="d-flex flex-justify-between flex-items-center">
-                                                        <div className="d-flex flex-items-center gap-2">
-                                                            <span className="text-mono text-bold">
+                                                        <div className="d-flex flex-items-center">
+                                                            <span className="text-mono text-bold mr-2">
                                                                 {file.path}
                                                             </span>
                                                             <span
-                                                                className={`Label Label--${statusInfo.color}`}
+                                                                className={`Label Label--${statusInfo.color} mr-2`}
                                                             >
                                                                 {
                                                                     statusInfo.label
                                                                 }
                                                             </span>
-                                                            <span className="text-small color-fg-success">
+                                                            <span className="text-small color-fg-success mr-2">
                                                                 +
                                                                 {file.additions}
                                                             </span>
@@ -316,30 +330,32 @@
                                                                 {file.deletions}
                                                             </span>
                                                         </div>
-                                                        <div className="d-flex flex-items-center gap-2">
-                                                            {file.viewed && (
-                                                                <span className="Label Label--primary">
-                                                                    ✓ Viewed
-                                                                </span>
-                                                            )}
-                                                            <button
-                                                                className={`btn btn-sm ${file.viewed ? "btn-invisible" : "btn-primary"}`}
-                                                                onClick={(
+                                                        <div className="d-flex flex-items-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-checkbox mr-2"
+                                                                checked={
+                                                                    file.viewed
+                                                                }
+                                                                onChange={(
                                                                     e,
                                                                 ) => {
                                                                     e.stopPropagation();
-                                                                    markAsViewed(
-                                                                        file.path,
-                                                                    );
+                                                                    if (
+                                                                        !file.viewed
+                                                                    ) {
+                                                                        markAsViewed(
+                                                                            file.path,
+                                                                        );
+                                                                    }
                                                                 }}
-                                                                disabled={
-                                                                    file.viewed
+                                                                onClick={(e) =>
+                                                                    e.stopPropagation()
                                                                 }
-                                                            >
-                                                                {file.viewed
-                                                                    ? "Viewed"
-                                                                    : "Mark as viewed"}
-                                                            </button>
+                                                            />
+                                                            <span className="text-small color-fg-muted">
+                                                                Viewed
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
