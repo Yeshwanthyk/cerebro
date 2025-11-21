@@ -62,12 +62,18 @@ impl DaemonManager {
 
         // Start from 3000 and find the first available port
         for port in 3000..4000 {
-            if !used_ports.contains(&port) {
+            if !used_ports.contains(&port) && Self::is_port_available(port) {
                 return Ok(port);
             }
         }
 
         anyhow::bail!("No available ports in range 3000-4000")
+    }
+
+    fn is_port_available(port: u16) -> bool {
+        use std::net::TcpListener;
+
+        TcpListener::bind(("127.0.0.1", port)).is_ok()
     }
 
     pub fn get_daemon_for_repo(&self, repo_path: &str) -> Result<Option<DaemonInfo>> {
