@@ -107,7 +107,7 @@ func (r *Repo) GetDiffFiles(baseBranch string) ([]FileInfo, error) {
 		return nil, fmt.Errorf("failed to create diff: %w", err)
 	}
 
-	var files []FileInfo
+	files := []FileInfo{}
 
 	for _, change := range changes {
 		patch, err := change.Patch()

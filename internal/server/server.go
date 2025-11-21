@@ -134,7 +134,7 @@ func (s *AppState) diffHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var fileDiffs []FileDiff
+	fileDiffs := []FileDiff{}
 	for _, file := range files {
 		viewed := s.StateManager.IsFileViewed(s.RepoPath, currentBranch, currentCommit, file.Path)
 
