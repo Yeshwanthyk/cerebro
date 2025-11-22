@@ -360,7 +360,7 @@ func (s *AppState) resolveCommentHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := s.StateManager.ResolveComment(s.RepoPath, currentBranch, currentCommit, payload.CommentID); err != nil {
+	if err := s.StateManager.ResolveComment(s.RepoPath, currentBranch, currentCommit, payload.CommentID, "web-ui"); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
