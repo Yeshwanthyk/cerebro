@@ -450,13 +450,13 @@ func openBrowser(c *cli.Context) error {
 	infoColor.Println(" in your browser...")
 
 	var cmd *exec.Cmd
-	switch {
-	case exec.Command("xdg-open", "--version").Run() == nil:
-		cmd = exec.Command("xdg-open", url)
-	case exec.Command("open", "--version").Run() == nil:
+	switch runtime.GOOS {
+	case "darwin":
 		cmd = exec.Command("open", url)
-	default:
+	case "windows":
 		cmd = exec.Command("cmd", "/C", "start", url)
+	default: // linux, freebsd, etc.
+		cmd = exec.Command("xdg-open", url)
 	}
 
 	return cmd.Start()
