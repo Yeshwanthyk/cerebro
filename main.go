@@ -361,8 +361,8 @@ func stopAllDaemons(c *cli.Context) error {
 
 	for _, info := range daemons {
 		if daemonMgr.IsDaemonRunning(info.PID) {
-			_ = daemonMgr.StopDaemon(info.PID)               // Best effort stop
-			_ = daemonMgr.UnregisterDaemon(info.RepoPath)     // Best effort cleanup
+			_ = daemonMgr.StopDaemon(info.PID)            // Best effort stop
+			_ = daemonMgr.UnregisterDaemon(info.RepoPath) // Best effort cleanup
 			successColor.Printf("✓ Stopped daemon for %s\n", info.RepoPath)
 		}
 	}
