@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2025-11-22
+
+### 🐛 Bug Fixes
+
+- Use runtime.GOOS for browser detection instead of version checks ([90d6dff](90d6dffb3ffbf4d7252fb5ab211d33da531731ef))
+- Add missing runtime import ([95ce3cb](95ce3cb895da87011e3f1c9c95c12164bbe7afd5))
+
 ## [0.3.1] - 2025-11-22
 
 ### 📚 Documentation
