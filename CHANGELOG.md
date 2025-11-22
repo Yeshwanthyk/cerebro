@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2025-11-22
+
+### 📚 Documentation
+
+- Recommend using mise for MCP server configuration ([11cfd94](11cfd9429cff21f08675c999eb495782f63c8fe3))
+
 ## [0.3.0] - 2025-11-22
 
 ### 🚀 Features
