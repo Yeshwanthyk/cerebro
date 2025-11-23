@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-11-23
+
+### 🚀 Features
+
+- Auto-stop daemon when leaving git repository ([6fa3447](6fa3447505c89d901cdc0f828380232de98419f4))
+
 ## [0.3.4] - 2025-11-23
 
 ### 🐛 Bug Fixes
