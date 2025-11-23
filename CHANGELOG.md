@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2025-11-23
+
+### 🚀 Features
+
+- Preserve diff prefixes (+/-) in syntax-highlighted code ([ddbd584](ddbd584ae7d952da21ac759f33ba2338e36d4b89))
+
 ## [0.5.0] - 2025-11-23
 
 ### 🚀 Features
