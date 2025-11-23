@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.4] - 2025-11-23
+
+### 🐛 Bug Fixes
+
+- Make comment text white in light mode ([983dda8](983dda8b1c7e6fc7814c1c656b7da51ef3ccddd2))
+
+### 📚 Documentation
+
+- Update README.md [skip ci] ([8f24598](8f24598c1a3da6fde77aad7ca800bccf68da0c95))
+- Create .all-contributorsrc [skip ci] ([2a12d52](2a12d521cc06dde5de7dd990da479d6b8bf4924b))
+
 ## [0.3.3] - 2025-11-22
 
 ### 🐛 Bug Fixes
