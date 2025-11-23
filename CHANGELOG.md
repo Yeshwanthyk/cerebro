@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2025-11-23
+
+### 🚀 Features
+
+- [**breaking**] Make repo_path required in MCP tools and simplify MCP command ([073aa9d](073aa9d434c808ead84e6576d13a82acfdea21cb))
+
 ## [0.6.0] - 2025-11-23
 
 ### 🚀 Features
