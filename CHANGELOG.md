@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2025-11-24
+
+### 🚀 Features
+
+- Add AI agent notes for code explanations ([522f9bb](522f9bb4c14157b26432d599b6b540654d2d2f65))
+
 ## [1.0.0] - 2025-11-23
 
 ### 🚀 Features
