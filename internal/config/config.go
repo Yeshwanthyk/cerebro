@@ -88,5 +88,5 @@ func getConfigPath() (string, error) {
 		configDir = filepath.Join(home, ".config")
 	}
 
-	return filepath.Join(configDir, "guck", "config.toml"), nil
+	return filepath.Join(configDir, "cerebro", "config.toml"), nil
 }
