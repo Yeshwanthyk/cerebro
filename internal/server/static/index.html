@@ -731,10 +731,19 @@
                     if (!file.patch) return null;
                     
                     const lines = file.patch.split('\n');
-                    let currentLineNumber = 0;
+                    let currentLineNumber = 0; // Absolute line number in new file
                     const elements = [];
 
                     lines.forEach((line, index) => {
+                        // Parse hunk header: @@ -oldStart,oldCount +newStart,newCount @@
+                        if (line.startsWith('@@')) {
+                            const match = line.match(/@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+                            if (match) {
+                                currentLineNumber = parseInt(match[1], 10) - 1;
+                            }
+                            return; // Skip rendering hunk headers
+                        }
+                        
                         const prefix = line[0];
                         if (prefix === '+' || prefix === ' ') {
                             currentLineNumber++;
