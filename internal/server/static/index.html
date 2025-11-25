@@ -378,6 +378,7 @@
                     author: "all",
                     type: "all",
                 });
+                const [mode, setMode] = useState("branch"); // branch, working, staged
 
                 // Theme management
                 const getInitialTheme = () => {
@@ -403,7 +404,7 @@
 
                 useEffect(() => {
                     loadData();
-                }, []);
+                }, [mode]);
 
                 function updateDocumentTitle(repoPath, remoteURL) {
                     let title = "Guck";
@@ -437,7 +438,7 @@
                         const [statusRes, diffRes, commentsRes, notesRes] =
                             await Promise.all([
                                 fetch("/api/status"),
-                                fetch("/api/diff"),
+                                fetch(`/api/diff?mode=${mode}`),
                                 fetch("/api/comments"),
                                 fetch("/api/notes"),
                             ]);
@@ -459,6 +460,10 @@
                         setStatus(statusData);
                         setDiff(diffData);
                         setNotes(notesData || []);
+                        // Sync mode with server response on initial load
+                        if (diffData.mode) {
+                            setMode(diffData.mode);
+                        }
 
                         // Update document title with repository name
                         updateDocumentTitle(
@@ -962,12 +967,22 @@
                                         Guck
                                     </a>
                                 </div>
-                                <div className="Subhead-description mt-1">
-                                    <span className="Label Label--secondary mr-2">
-                                        Branch: {diff?.branch}
+                                <div className="Subhead-description mt-1 d-flex flex-items-center" style={{ gap: "8px" }}>
+                                    <select
+                                        className="form-select form-select-sm"
+                                        value={mode}
+                                        onChange={(e) => setMode(e.target.value)}
+                                        style={{ width: "auto" }}
+                                    >
+                                        <option value="branch">vs {diff?.base_branch || "main"}</option>
+                                        <option value="working">Working (uncommitted)</option>
+                                        <option value="staged">Staged only</option>
+                                    </select>
+                                    <span className="Label Label--secondary">
+                                        {diff?.branch}
                                     </span>
-                                    <span className="Label Label--secondary mr-2">
-                                        Commit: {diff?.commit.slice(0, 7)}
+                                    <span className="Label Label--secondary">
+                                        {diff?.commit?.slice(0, 7)}
                                     </span>
                                     <span className="color-fg-muted text-small">
                                         · A project by{" "}
@@ -1192,8 +1207,9 @@
                                     No changes
                                 </h3>
                                 <p>
-                                    There are no differences between your
-                                    current branch and main.
+                                    {mode === "working" && "No uncommitted changes in your working directory."}
+                                    {mode === "staged" && "No staged changes. Stage files with git add to see them here."}
+                                    {mode === "branch" && `No differences between your current branch and ${diff?.base_branch || "main"}.`}
                                 </p>
                             </div>
                         )}
