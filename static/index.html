@@ -269,31 +269,64 @@
             }
 
             // ============================================
+            // SIMPLE MARKDOWN RENDERER
+            // ============================================
+            function renderMarkdown(text) {
+                if (!text) return null;
+                
+                // Split into paragraphs
+                const paragraphs = text.split(/\n\n+/);
+                
+                return paragraphs.map((para, i) => {
+                    // Process inline formatting
+                    let processed = para
+                        // Bold: **text** or __text__
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                        .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+                        // Italic: *text* or _text_
+                        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                        .replace(/_([^_]+)_/g, '<em>$1</em>')
+                        // Code: `text`
+                        .replace(/`([^`]+)`/g, '<code style="background:var(--bg-tertiary);padding:1px 4px;border-radius:3px;font-size:12px;font-family:var(--font-mono)">$1</code>')
+                        // Line breaks within paragraph
+                        .replace(/\n/g, '<br/>');
+                    
+                    return (
+                        <p 
+                            key={i} 
+                            style={{ margin: i === 0 ? 0 : '8px 0 0 0' }}
+                            dangerouslySetInnerHTML={{ __html: processed }}
+                        />
+                    );
+                });
+            }
+
+            // ============================================
             // INLINE NOTE COMPONENT
             // ============================================
             function InlineNote({ note, onDismiss }) {
                 const [expanded, setExpanded] = useState(false);
                 
                 const typeColors = {
-                    'RATIONALE': { bg: 'rgba(107, 143, 113, 0.1)', text: 'var(--accent)', border: 'rgba(107, 143, 113, 0.2)' },
-                    'EXPLANATION': { bg: 'rgba(147, 130, 186, 0.1)', text: '#9382BA', border: 'rgba(147, 130, 186, 0.2)' },
-                    'WARNING': { bg: 'rgba(214, 163, 108, 0.1)', text: '#D6A36C', border: 'rgba(214, 163, 108, 0.2)' },
-                    'TODO': { bg: 'rgba(108, 163, 214, 0.1)', text: '#6CA3D6', border: 'rgba(108, 163, 214, 0.2)' },
+                    'RATIONALE': 'var(--accent)',
+                    'EXPLANATION': '#9382BA',
+                    'WARNING': '#D6A36C',
+                    'TODO': '#6CA3D6',
                 };
                 
-                const colors = typeColors[note.type] || typeColors['RATIONALE'];
-                const previewLength = 120;
+                const accentColor = typeColors[note.type?.toUpperCase()] || typeColors['RATIONALE'];
+                const previewLength = 150;
                 const needsExpansion = note.text.length > previewLength;
-                const displayText = expanded ? note.text : note.text.slice(0, previewLength);
+                const displayText = expanded ? note.text : note.text.slice(0, previewLength) + (needsExpansion ? '...' : '');
 
                 return (
                     <div style={{
-                        margin: '8px 0 8px 52px',
-                        padding: '14px 16px',
-                        background: colors.bg,
-                        borderLeft: `2px solid ${colors.border}`,
+                        margin: '4px 0 4px 72px',
+                        padding: '10px 14px',
+                        background: 'var(--bg-secondary)',
+                        borderLeft: `2px solid ${accentColor}`,
                         borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
-                        animation: 'fadeIn 0.3s ease-out',
+                        animation: 'fadeIn 0.2s ease-out',
                     }}>
                         <div style={{ 
                             display: 'flex', 
@@ -301,42 +334,42 @@
                             justifyContent: 'space-between',
                             gap: '12px',
                         }}>
-                            <div style={{ flex: 1 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ 
                                     display: 'flex', 
                                     alignItems: 'center', 
-                                    gap: '8px', 
+                                    gap: '6px', 
                                     marginBottom: '6px' 
                                 }}>
                                     <span style={{
                                         fontSize: '10px',
                                         fontWeight: 600,
                                         textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        color: colors.text,
-                                        background: colors.border,
-                                        padding: '2px 6px',
-                                        borderRadius: '3px',
+                                        letterSpacing: '0.03em',
+                                        color: accentColor,
                                     }}>
                                         {note.author}
                                     </span>
                                     <span style={{
                                         fontSize: '10px',
-                                        fontWeight: 500,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
                                         color: 'var(--text-tertiary)',
+                                    }}>
+                                        ·
+                                    </span>
+                                    <span style={{
+                                        fontSize: '10px',
+                                        color: 'var(--text-tertiary)',
+                                        textTransform: 'lowercase',
                                     }}>
                                         {note.type}
                                     </span>
                                 </div>
                                 <div style={{
                                     fontSize: '13px',
-                                    lineHeight: 1.6,
-                                    color: 'var(--text-primary)',
+                                    lineHeight: 1.5,
+                                    color: 'var(--text-secondary)',
                                 }}>
-                                    {displayText}
-                                    {needsExpansion && !expanded && '...'}
+                                    {renderMarkdown(displayText)}
                                 </div>
                                 {needsExpansion && (
                                     <button
@@ -344,15 +377,14 @@
                                         style={{
                                             background: 'none',
                                             border: 'none',
-                                            color: colors.text,
-                                            fontSize: '12px',
-                                            fontWeight: 500,
+                                            color: 'var(--text-tertiary)',
+                                            fontSize: '11px',
                                             cursor: 'pointer',
-                                            padding: '4px 0',
-                                            marginTop: '4px',
+                                            padding: 0,
+                                            marginTop: '6px',
                                         }}
                                     >
-                                        {expanded ? 'Show less' : 'Show more'}
+                                        {expanded ? '↑ less' : '↓ more'}
                                     </button>
                                 )}
                             </div>
@@ -363,16 +395,16 @@
                                     border: 'none',
                                     color: 'var(--text-tertiary)',
                                     cursor: 'pointer',
-                                    padding: '4px',
+                                    padding: '2px 6px',
                                     borderRadius: 'var(--radius-sm)',
-                                    fontSize: '12px',
-                                    opacity: 0.6,
+                                    fontSize: '11px',
+                                    opacity: 0.5,
                                     transition: 'opacity var(--transition)',
                                 }}
                                 onMouseEnter={e => e.target.style.opacity = 1}
-                                onMouseLeave={e => e.target.style.opacity = 0.6}
+                                onMouseLeave={e => e.target.style.opacity = 0.5}
                             >
-                                Dismiss
+                                dismiss
                             </button>
                         </div>
                     </div>
@@ -735,6 +767,18 @@
                     const elements = [];
 
                     lines.forEach((line, index) => {
+                        // Skip diff header lines
+                        if (line.startsWith('diff --git') ||
+                            line.startsWith('index ') ||
+                            line.startsWith('--- ') ||
+                            line.startsWith('+++ ') ||
+                            line.startsWith('new file') ||
+                            line.startsWith('deleted file') ||
+                            line.startsWith('similarity') ||
+                            line.startsWith('rename ')) {
+                            return;
+                        }
+                        
                         // Parse hunk header: @@ -oldStart,oldCount +newStart,newCount @@
                         if (line.startsWith('@@')) {
                             const match = line.match(/@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
