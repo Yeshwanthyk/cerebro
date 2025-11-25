@@ -745,9 +745,13 @@
                 comments,
                 notes,
                 showNotes,
+                mode,
                 onAddComment,
                 onResolveComment,
                 onDismissNote,
+                onStage,
+                onUnstage,
+                onDiscard,
             }) {
                 const [activeCommentLine, setActiveCommentLine] = useState(null);
                 
@@ -979,6 +983,61 @@
                                 )}
                             </div>
 
+                            {/* Git actions */}
+                            <div 
+                                onClick={e => e.stopPropagation()}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '16px' }}
+                            >
+                                {mode === 'working' && (
+                                    <button
+                                        onClick={() => onStage(file.path)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--accent)',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            padding: '4px 8px',
+                                            borderRadius: 'var(--radius-sm)',
+                                        }}
+                                    >
+                                        Stage
+                                    </button>
+                                )}
+                                {mode === 'staged' && (
+                                    <button
+                                        onClick={() => onUnstage(file.path)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            padding: '4px 8px',
+                                            borderRadius: 'var(--radius-sm)',
+                                        }}
+                                    >
+                                        Unstage
+                                    </button>
+                                )}
+                                {(mode === 'working' || mode === 'branch') && file.status !== 'untracked' && (
+                                    <button
+                                        onClick={() => onDiscard(file.path)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--deletion-text)',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            padding: '4px 8px',
+                                            borderRadius: 'var(--radius-sm)',
+                                        }}
+                                    >
+                                        Discard
+                                    </button>
+                                )}
+                            </div>
+
                             {/* Viewed checkbox */}
                             <label
                                 onClick={e => e.stopPropagation()}
@@ -987,7 +1046,7 @@
                                     alignItems: 'center',
                                     gap: '8px',
                                     cursor: 'pointer',
-                                    marginLeft: '16px',
+                                    marginLeft: '8px',
                                     flexShrink: 0,
                                 }}
                             >
@@ -1321,6 +1380,71 @@
                     }
                 }
 
+                async function stageFile(filePath) {
+                    try {
+                        const res = await fetch('/api/stage', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ file_path: filePath }),
+                        });
+                        if (res.ok) {
+                            loadData(mode);
+                        }
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
+                async function unstageFile(filePath) {
+                    try {
+                        const res = await fetch('/api/unstage', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ file_path: filePath }),
+                        });
+                        if (res.ok) {
+                            loadData(mode);
+                        }
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
+                async function discardFile(filePath) {
+                    if (!confirm(`Discard changes to ${filePath}? This cannot be undone.`)) {
+                        return;
+                    }
+                    try {
+                        const res = await fetch('/api/discard', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ file_path: filePath }),
+                        });
+                        if (res.ok) {
+                            loadData(mode);
+                        }
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
+                async function commitChanges() {
+                    const message = prompt('Commit message:');
+                    if (!message) return;
+                    try {
+                        const res = await fetch('/api/commit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message }),
+                        });
+                        if (res.ok) {
+                            loadData(mode);
+                        }
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
                 const viewedCount = diff?.files.filter(f => f.viewed).length || 0;
                 const totalCount = diff?.files.length || 0;
                 const totalNotes = Object.values(notes).flat().filter(n => !n.dismissed).length;
@@ -1445,6 +1569,26 @@
                                     }} 
                                 />
                                 
+                                {/* Commit button - show when in staged mode or there are staged files */}
+                                {mode === 'staged' && totalCount > 0 && (
+                                    <button
+                                        onClick={commitChanges}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            borderRadius: 'var(--radius-sm)',
+                                            background: 'var(--accent)',
+                                            color: 'white',
+                                            fontSize: '12px',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            transition: 'all var(--transition)',
+                                        }}
+                                    >
+                                        Commit
+                                    </button>
+                                )}
+                                
                                 {/* Notes toggle */}
                                 <button
                                     onClick={() => setShowNotes(!showNotes)}
@@ -1537,9 +1681,13 @@
                                         comments={comments[file.path]}
                                         notes={notes[file.path]}
                                         showNotes={showNotes}
+                                        mode={mode}
                                         onAddComment={addComment}
                                         onResolveComment={resolveComment}
                                         onDismissNote={dismissNote}
+                                        onStage={stageFile}
+                                        onUnstage={unstageFile}
+                                        onDiscard={discardFile}
                                     />
                                 ))}
                             </div>
