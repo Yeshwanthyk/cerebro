@@ -45,7 +45,9 @@ cd /path/to/your/repo  # Daemon starts automatically
 guck                   # Opens browser to review diffs
 ```
 
-## MCP Integration with Claude Code
+## MCP Integration
+
+### Option 1: Claude Desktop Integration
 
 Add to your Claude Desktop configuration:
 
@@ -66,6 +68,35 @@ Restart Claude Code, and you can ask Claude to:
 - "List all unresolved comments in this repository"
 - "Show me comments on main.go"
 - "Resolve comment with ID xyz"
+
+### Option 2: Standalone CLI via mcporter
+
+Generate a standalone `guck-mcp` CLI for all MCP tools:
+
+```bash
+# Install mcporter
+npm install -g mcporter
+
+# Generate CLI (run from guck source directory)
+npx mcporter generate-cli \
+  --command "/path/to/guck mcp" \
+  --name guck-mcp \
+  --description "Guck code review MCP tools" \
+  --bundle dist/guck-mcp.js
+
+# Install to PATH
+chmod +x dist/guck-mcp.js
+ln -s $(pwd)/dist/guck-mcp.js ~/commands/guck-mcp
+```
+
+**Usage:**
+```bash
+guck-mcp list-comments --resolved false
+guck-mcp resolve-comment --comment-id "123-4" --resolved-by hsey
+guck-mcp add-note --branch main --commit HEAD --file-path main.go --text "..." --author hsey
+guck-mcp list-notes --dismissed false
+guck-mcp dismiss-note --note-id "456-7" --dismissed-by hsey
+```
 
 ## Documentation
 

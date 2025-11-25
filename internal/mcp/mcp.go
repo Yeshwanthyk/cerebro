@@ -255,11 +255,11 @@ func ListCommentsWithManager(paramsRaw json.RawMessage, stateMgr *state.Manager)
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
 
-	if params.RepoPath == "" {
-		return nil, fmt.Errorf("repo_path is required")
-	}
-
+	// Default to current directory if not specified
 	repoPath := params.RepoPath
+	if repoPath == "" {
+		repoPath = "."
+	}
 
 	// Make path absolute
 	absPath, err := filepath.Abs(repoPath)
@@ -337,10 +337,6 @@ func ResolveCommentWithManager(paramsRaw json.RawMessage, stateMgr *state.Manage
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
 
-	if params.RepoPath == "" {
-		return nil, fmt.Errorf("repo_path is required")
-	}
-
 	if params.CommentID == "" {
 		return nil, fmt.Errorf("comment_id is required")
 	}
@@ -349,7 +345,11 @@ func ResolveCommentWithManager(paramsRaw json.RawMessage, stateMgr *state.Manage
 		return nil, fmt.Errorf("resolved_by is required")
 	}
 
+	// Default to current directory if not specified
 	repoPath := params.RepoPath
+	if repoPath == "" {
+		repoPath = "."
+	}
 
 	// Make path absolute
 	absPath, err := filepath.Abs(repoPath)
@@ -399,9 +399,12 @@ func AddNoteWithManager(paramsRaw json.RawMessage, stateMgr *state.Manager) (int
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
 
-	if params.RepoPath == "" {
-		return nil, fmt.Errorf("repo_path is required")
+	// Default to current directory if not specified
+	repoPath := params.RepoPath
+	if repoPath == "" {
+		repoPath = "."
 	}
+	params.RepoPath = repoPath
 
 	if params.Branch == "" {
 		return nil, fmt.Errorf("branch is required")
@@ -473,12 +476,14 @@ func ListNotesWithManager(paramsRaw json.RawMessage, stateMgr *state.Manager) (i
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
 
-	if params.RepoPath == "" {
-		return nil, fmt.Errorf("repo_path is required")
+	// Default to current directory if not specified
+	repoPath := params.RepoPath
+	if repoPath == "" {
+		repoPath = "."
 	}
 
 	// Make path absolute
-	absPath, err := filepath.Abs(params.RepoPath)
+	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("invalid repo_path: %w", err)
 	}
@@ -567,10 +572,6 @@ func DismissNoteWithManager(paramsRaw json.RawMessage, stateMgr *state.Manager) 
 		return nil, fmt.Errorf("invalid params: %w", err)
 	}
 
-	if params.RepoPath == "" {
-		return nil, fmt.Errorf("repo_path is required")
-	}
-
 	if params.NoteID == "" {
 		return nil, fmt.Errorf("note_id is required")
 	}
@@ -579,8 +580,14 @@ func DismissNoteWithManager(paramsRaw json.RawMessage, stateMgr *state.Manager) 
 		return nil, fmt.Errorf("dismissed_by is required")
 	}
 
+	// Default to current directory if not specified
+	repoPath := params.RepoPath
+	if repoPath == "" {
+		repoPath = "."
+	}
+
 	// Make path absolute
-	absPath, err := filepath.Abs(params.RepoPath)
+	absPath, err := filepath.Abs(repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("invalid repo_path: %w", err)
 	}

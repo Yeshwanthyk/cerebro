@@ -197,6 +197,104 @@ func handleToolsList(request JSONRPCRequest) *JSONRPCResponse {
 				"required": []string{"comment_id", "resolved_by"},
 			},
 		},
+		{
+			Name:        "add_note",
+			Description: "Add an AI agent note to explain code decisions, rationale, or suggestions",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"repo_path": map[string]interface{}{
+						"type":        "string",
+						"description": "Path to the Git repository",
+					},
+					"branch": map[string]interface{}{
+						"type":        "string",
+						"description": "Branch name where the note applies",
+					},
+					"commit": map[string]interface{}{
+						"type":        "string",
+						"description": "Commit hash where the note applies",
+					},
+					"file_path": map[string]interface{}{
+						"type":        "string",
+						"description": "File path relative to repository root",
+					},
+					"line_number": map[string]interface{}{
+						"type":        "integer",
+						"description": "Line number for inline notes (optional)",
+					},
+					"text": map[string]interface{}{
+						"type":        "string",
+						"description": "The note content (markdown supported)",
+					},
+					"author": map[string]interface{}{
+						"type":        "string",
+						"description": "Author identifier (e.g., 'claude', 'copilot', 'hsey')",
+					},
+					"type": map[string]interface{}{
+						"type":        "string",
+						"description": "Note type: 'explanation', 'rationale', 'suggestion' (default: 'explanation')",
+					},
+				},
+				"required": []string{"branch", "commit", "file_path", "text", "author"},
+			},
+		},
+		{
+			Name:        "list_notes",
+			Description: "List AI agent notes with optional filtering",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"repo_path": map[string]interface{}{
+						"type":        "string",
+						"description": "Path to the Git repository",
+					},
+					"branch": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by branch name (optional)",
+					},
+					"commit": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by commit hash (optional)",
+					},
+					"file_path": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by file path (optional)",
+					},
+					"dismissed": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Filter by dismissal status (optional)",
+					},
+					"author": map[string]interface{}{
+						"type":        "string",
+						"description": "Filter by author (optional)",
+					},
+				},
+				"required": []string{},
+			},
+		},
+		{
+			Name:        "dismiss_note",
+			Description: "Mark an AI agent note as dismissed",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"repo_path": map[string]interface{}{
+						"type":        "string",
+						"description": "Path to the Git repository",
+					},
+					"note_id": map[string]interface{}{
+						"type":        "string",
+						"description": "The ID of the note to dismiss",
+					},
+					"dismissed_by": map[string]interface{}{
+						"type":        "string",
+						"description": "Identifier of who is dismissing the note",
+					},
+				},
+				"required": []string{"note_id", "dismissed_by"},
+			},
+		},
 	}
 
 	return &JSONRPCResponse{
