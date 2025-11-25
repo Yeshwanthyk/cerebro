@@ -194,7 +194,7 @@ func handleToolsList(request JSONRPCRequest) *JSONRPCResponse {
 						"description": "Path to the Git repository (defaults to current working directory)",
 					},
 				},
-				"required": []string{"comment_id", "resolved_by"},
+				"required": []string{"comment_id"},
 			},
 		},
 		{

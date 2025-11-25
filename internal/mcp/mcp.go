@@ -129,7 +129,7 @@ func ListTools() map[string]interface{} {
 						"description": "Name or identifier of who is resolving the comment",
 					},
 				},
-				"required": []string{"repo_path", "comment_id", "resolved_by"},
+				"required": []string{"comment_id"},
 			},
 		},
 		{
@@ -341,8 +341,9 @@ func ResolveCommentWithManager(paramsRaw json.RawMessage, stateMgr *state.Manage
 		return nil, fmt.Errorf("comment_id is required")
 	}
 
+	// Default resolved_by to "agent" if not specified
 	if params.ResolvedBy == "" {
-		return nil, fmt.Errorf("resolved_by is required")
+		params.ResolvedBy = "agent"
 	}
 
 	// Default to current directory if not specified
