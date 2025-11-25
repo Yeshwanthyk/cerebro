@@ -1234,6 +1234,44 @@
                     loadData(mode);
                 }, [mode]);
 
+                // Auto-refresh notes and comments every 3 seconds
+                useEffect(() => {
+                    const refreshNotesAndComments = async () => {
+                        try {
+                            const modeParam = mode ? `?mode=${mode}` : '';
+                            const [commentsRes, notesRes] = await Promise.all([
+                                fetch(`/api/comments${modeParam}`),
+                                fetch(`/api/notes${modeParam}`).catch(() => ({ ok: false })),
+                            ]);
+
+                            if (commentsRes.ok) {
+                                const commentsData = await commentsRes.json();
+                                const commentsByFile = {};
+                                commentsData.forEach(c => {
+                                    if (!commentsByFile[c.file_path]) commentsByFile[c.file_path] = [];
+                                    commentsByFile[c.file_path].push(c);
+                                });
+                                setComments(commentsByFile);
+                            }
+
+                            if (notesRes.ok) {
+                                const notesData = await notesRes.json();
+                                const notesByFile = {};
+                                notesData.forEach(n => {
+                                    if (!notesByFile[n.file_path]) notesByFile[n.file_path] = [];
+                                    notesByFile[n.file_path].push(n);
+                                });
+                                setNotes(notesByFile);
+                            }
+                        } catch (err) {
+                            console.error('Failed to refresh notes/comments:', err);
+                        }
+                    };
+
+                    const interval = setInterval(refreshNotesAndComments, 3000);
+                    return () => clearInterval(interval);
+                }, [mode]);
+
                 // Keyboard shortcuts
                 useEffect(() => {
                     const handleKeyDown = (e) => {
@@ -1286,8 +1324,8 @@
                         const [statusRes, diffRes, commentsRes, notesRes] = await Promise.all([
                             fetch('/api/status'),
                             fetch(`/api/diff${modeParam}`),
-                            fetch('/api/comments'),
-                            fetch('/api/notes').catch(() => ({ ok: false })),
+                            fetch(`/api/comments${modeParam}`),
+                            fetch(`/api/notes${modeParam}`).catch(() => ({ ok: false })),
                         ]);
 
                         if (!statusRes.ok || !diffRes.ok) {
