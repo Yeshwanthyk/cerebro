@@ -204,6 +204,81 @@
             }
 
             // ============================================
+            // CONFIRM DIALOG
+            // ============================================
+            function ConfirmDialog({ message, onConfirm, onCancel }) {
+                useEffect(() => {
+                    const handleKey = (e) => {
+                        if (e.key === 'Enter') onConfirm();
+                        if (e.key === 'Escape') onCancel();
+                    };
+                    window.addEventListener('keydown', handleKey);
+                    return () => window.removeEventListener('keydown', handleKey);
+                }, [onConfirm, onCancel]);
+
+                return (
+                    <div style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000,
+                        animation: 'fadeIn 0.15s ease-out',
+                    }}>
+                        <div style={{
+                            background: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-primary)',
+                            borderRadius: 'var(--radius-lg)',
+                            padding: '24px',
+                            maxWidth: '400px',
+                            boxShadow: 'var(--shadow-lg)',
+                        }}>
+                            <div style={{
+                                fontSize: '14px',
+                                color: 'var(--text-primary)',
+                                marginBottom: '20px',
+                                lineHeight: 1.5,
+                            }}>
+                                {message}
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={onCancel}
+                                    style={{
+                                        padding: '8px 16px',
+                                        border: '1px solid var(--border-primary)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: 'transparent',
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '13px',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={onConfirm}
+                                    style={{
+                                        padding: '8px 16px',
+                                        border: 'none',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: 'var(--deletion-text)',
+                                        color: 'white',
+                                        fontSize: '13px',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    Discard
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ============================================
             // KEYBOARD SHORTCUTS HINT
             // ============================================
             function KeyboardHint({ show }) {
@@ -1146,6 +1221,7 @@
                 const [showNotes, setShowNotes] = useState(true);
                 const [showKeyboardHint, setShowKeyboardHint] = useState(false);
                 const [mode, setMode] = useState('branch');
+                const [confirmDialog, setConfirmDialog] = useState(null);
 
                 // Apply theme
                 useEffect(() => {
@@ -1410,22 +1486,26 @@
                     }
                 }
 
-                async function discardFile(filePath) {
-                    if (!confirm(`Discard changes to ${filePath}? This cannot be undone.`)) {
-                        return;
-                    }
-                    try {
-                        const res = await fetch('/api/discard', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ file_path: filePath }),
-                        });
-                        if (res.ok) {
-                            loadData(mode);
-                        }
-                    } catch (err) {
-                        setError(err.message);
-                    }
+                function discardFile(filePath) {
+                    setConfirmDialog({
+                        message: `Discard changes to ${filePath}? This cannot be undone.`,
+                        onConfirm: async () => {
+                            setConfirmDialog(null);
+                            try {
+                                const res = await fetch('/api/discard', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ file_path: filePath }),
+                                });
+                                if (res.ok) {
+                                    loadData(mode);
+                                }
+                            } catch (err) {
+                                setError(err.message);
+                            }
+                        },
+                        onCancel: () => setConfirmDialog(null),
+                    });
                 }
 
                 async function commitChanges() {
@@ -1715,6 +1795,15 @@
 
                         {/* Keyboard hints */}
                         <KeyboardHint show={showKeyboardHint} />
+                        
+                        {/* Confirm dialog */}
+                        {confirmDialog && (
+                            <ConfirmDialog 
+                                message={confirmDialog.message}
+                                onConfirm={confirmDialog.onConfirm}
+                                onCancel={confirmDialog.onCancel}
+                            />
+                        )}
                     </div>
                 );
             }
