@@ -72,7 +72,7 @@ type ToolContent struct {
 func StartStdioServer() error {
 	// Configure logging to stderr (stdout is reserved for JSON-RPC)
 	log.SetOutput(os.Stderr)
-	log.SetPrefix("[guck-mcp] ")
+	log.SetPrefix("[cerebro-mcp] ")
 
 	decoder := json.NewDecoder(os.Stdin)
 	encoder := json.NewEncoder(os.Stdout)
@@ -134,7 +134,7 @@ func handleInitialize(request JSONRPCRequest) *JSONRPCResponse {
 		Result: InitializeResult{
 			ProtocolVersion: "2024-11-05",
 			ServerInfo: ServerInfo{
-				Name:    "guck",
+				Name:    "cerebro",
 				Version: "0.5.0",
 			},
 			Capabilities: Capabilities{
