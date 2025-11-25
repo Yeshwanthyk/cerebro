@@ -10,6 +10,20 @@ import (
 
 type Config struct {
 	BaseBranch string `toml:"base_branch"`
+	Mode       string `toml:"mode"` // "branch", "working", "staged"
+}
+
+// ValidModes are the allowed diff modes
+var ValidModes = []string{"branch", "working", "staged"}
+
+// IsValidMode checks if a mode string is valid
+func IsValidMode(mode string) bool {
+	for _, m := range ValidModes {
+		if m == mode {
+			return true
+		}
+	}
+	return false
 }
 
 func Load() (*Config, error) {
@@ -20,13 +34,20 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		BaseBranch: "main",
+		Mode:       "branch",
 	}
 
 	if _, err := os.Stat(configPath); err == nil {
 		if _, err := toml.DecodeFile(configPath, cfg); err != nil {
 			// If decode fails, use defaults
 			cfg.BaseBranch = "main"
+			cfg.Mode = "branch"
 		}
+	}
+
+	// Validate mode
+	if !IsValidMode(cfg.Mode) {
+		cfg.Mode = "branch"
 	}
 
 	return cfg, nil
