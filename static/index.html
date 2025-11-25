@@ -214,6 +214,9 @@
                     { key: 'k', action: 'Previous file' },
                     { key: 'o', action: 'Toggle file' },
                     { key: 'n', action: 'Toggle notes' },
+                    { key: '1', action: 'Branch mode' },
+                    { key: '2', action: 'Working mode' },
+                    { key: '3', action: 'Staged mode' },
                     { key: '?', action: 'Show shortcuts' },
                 ];
 
@@ -1118,6 +1121,15 @@
                                 break;
                             case 'n':
                                 setShowNotes(s => !s);
+                                break;
+                            case '1':
+                                setMode('branch');
+                                break;
+                            case '2':
+                                setMode('working');
+                                break;
+                            case '3':
+                                setMode('staged');
                                 break;
                             case '?':
                                 setShowKeyboardHint(s => !s);
