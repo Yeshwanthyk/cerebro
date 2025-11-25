@@ -1,4 +1,4 @@
-module github.com/tuist/guck
+module github.com/Yeshwanthyk/cerebro
 
 go 1.23
 
