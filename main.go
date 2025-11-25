@@ -43,7 +43,13 @@ func main() {
 					&cli.StringFlag{
 						Name:    "base",
 						Aliases: []string{"b"},
-						Usage:   "Base branch to compare against",
+						Usage:   "Base branch to compare against (for branch mode)",
+					},
+					&cli.StringFlag{
+						Name:    "mode",
+						Aliases: []string{"m"},
+						Usage:   "Diff mode: branch (vs base branch), working (uncommitted), staged (staged only)",
+						Value:   "branch",
 					},
 				},
 				Action: startServerForeground,
@@ -64,7 +70,13 @@ func main() {
 							&cli.StringFlag{
 								Name:    "base",
 								Aliases: []string{"b"},
-								Usage:   "Override base branch",
+								Usage:   "Override base branch (for branch mode)",
+							},
+							&cli.StringFlag{
+								Name:    "mode",
+								Aliases: []string{"m"},
+								Usage:   "Diff mode: branch, working, staged",
+								Value:   "branch",
 							},
 						},
 						Action: startDaemon,
@@ -379,9 +391,25 @@ func startServerForeground(c *cli.Context) error {
 		return err
 	}
 
+	// Determine mode
+	mode := c.String("mode")
+	if mode == "" {
+		mode = cfg.Mode
+	}
+	if !config.IsValidMode(mode) {
+		return fmt.Errorf("invalid mode '%s'. Valid modes: branch, working, staged", mode)
+	}
+
 	baseBranch := c.String("base")
 	if baseBranch == "" {
 		baseBranch = cfg.BaseBranch
+		// If config is still default "main", try to auto-detect the actual default branch
+		if baseBranch == "main" {
+			detectedBranch := gitRepo.GetDefaultBranch()
+			if detectedBranch != "" {
+				baseBranch = detectedBranch
+			}
+		}
 	}
 
 	port := c.Int("port")
@@ -397,6 +425,7 @@ func startServerForeground(c *cli.Context) error {
 		Port:       port,
 		RepoPath:   repoPath,
 		BaseBranch: baseBranch,
+		Mode:       mode,
 	}
 
 	if err := daemonMgr.RegisterDaemon(daemonInfo); err != nil {
@@ -404,11 +433,16 @@ func startServerForeground(c *cli.Context) error {
 	}
 
 	successColor.Printf("✓ Starting guck server for %s\n", repoPath)
+	infoColor.Printf("Mode: %s", mode)
+	if mode == "branch" {
+		infoColor.Printf(" (comparing against %s)", baseBranch)
+	}
+	infoColor.Println()
 	infoColor.Print("Server running on ")
 	urlColor.Printf("http://localhost:%d\n", port)
 	infoColor.Println("Press Ctrl+C to stop")
 
-	return server.Start(port, baseBranch)
+	return server.Start(port, baseBranch, mode)
 }
 
 func printShellIntegration(c *cli.Context) error {
@@ -498,9 +532,25 @@ func startDaemon(c *cli.Context) error {
 		return err
 	}
 
+	// Determine mode
+	mode := c.String("mode")
+	if mode == "" {
+		mode = cfg.Mode
+	}
+	if !config.IsValidMode(mode) {
+		return fmt.Errorf("invalid mode '%s'. Valid modes: branch, working, staged", mode)
+	}
+
 	baseBranch := c.String("base")
 	if baseBranch == "" {
 		baseBranch = cfg.BaseBranch
+		// If config is still default "main", try to auto-detect the actual default branch
+		if baseBranch == "main" {
+			detectedBranch := gitRepo.GetDefaultBranch()
+			if detectedBranch != "" {
+				baseBranch = detectedBranch
+			}
+		}
 	}
 
 	port, err := daemonMgr.FindAvailablePort()
@@ -515,13 +565,14 @@ func startDaemon(c *cli.Context) error {
 			Port:       port,
 			RepoPath:   repoPath,
 			BaseBranch: baseBranch,
+			Mode:       mode,
 		}
 
 		if err := daemonMgr.RegisterDaemon(daemonInfo); err != nil {
 			return err
 		}
 
-		return server.Start(port, baseBranch)
+		return server.Start(port, baseBranch, mode)
 	}
 
 	// Spawn daemon process
@@ -537,7 +588,7 @@ func startDaemon(c *cli.Context) error {
 	}
 	defer logFile.Close()
 
-	args := []string{"daemon", "start"}
+	args := []string{"daemon", "start", "--mode", mode}
 	if baseBranch != "" {
 		args = append(args, "--base", baseBranch)
 	}
@@ -553,7 +604,7 @@ func startDaemon(c *cli.Context) error {
 	}
 
 	successColor.Printf("✓ Started daemon for %s\n", repoPath)
-	infoColor.Printf("  Port: %d | PID: %d\n", port, cmd.Process.Pid)
+	infoColor.Printf("  Mode: %s | Port: %d | PID: %d\n", mode, port, cmd.Process.Pid)
 	return nil
 }
 
@@ -727,8 +778,19 @@ func setConfig(c *cli.Context) error {
 		successColor.Print("✓ Set ")
 		infoColor.Print("base-branch")
 		successColor.Printf(" to '%s'\n", value)
+	case "mode":
+		if !config.IsValidMode(value) {
+			return fmt.Errorf("invalid mode '%s'. Valid modes: branch, working, staged", value)
+		}
+		cfg.Mode = value
+		if err := cfg.Save(); err != nil {
+			return err
+		}
+		successColor.Print("✓ Set ")
+		infoColor.Print("mode")
+		successColor.Printf(" to '%s'\n", value)
 	default:
-		return fmt.Errorf("unknown configuration key: %s", key)
+		return fmt.Errorf("unknown configuration key: %s (valid keys: base-branch, mode)", key)
 	}
 
 	return nil
@@ -749,8 +811,10 @@ func getConfig(c *cli.Context) error {
 	switch key {
 	case "base-branch":
 		fmt.Println(cfg.BaseBranch)
+	case "mode":
+		fmt.Println(cfg.Mode)
 	default:
-		return fmt.Errorf("unknown configuration key: %s", key)
+		return fmt.Errorf("unknown configuration key: %s (valid keys: base-branch, mode)", key)
 	}
 
 	return nil
@@ -764,6 +828,8 @@ func showConfig(c *cli.Context) error {
 
 	infoColor.Print("base-branch = ")
 	successColor.Println(cfg.BaseBranch)
+	infoColor.Print("mode        = ")
+	successColor.Println(cfg.Mode)
 	return nil
 }
 

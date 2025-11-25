@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -18,16 +19,19 @@ var indexHTML string
 type AppState struct {
 	RepoPath     string
 	BaseBranch   string
+	Mode         git.DiffMode // "branch", "working", "staged"
 	StateManager *state.Manager
 	mu           sync.Mutex
 }
 
 type DiffResponse struct {
-	Files     []FileDiff `json:"files"`
-	Branch    string     `json:"branch"`
-	Commit    string     `json:"commit"`
-	RepoPath  string     `json:"repo_path"`
-	RemoteURL string     `json:"remote_url,omitempty"`
+	Files      []FileDiff `json:"files"`
+	Branch     string     `json:"branch"`
+	Commit     string     `json:"commit"`
+	RepoPath   string     `json:"repo_path"`
+	RemoteURL  string     `json:"remote_url,omitempty"`
+	Mode       string     `json:"mode"`        // Current diff mode
+	BaseBranch string     `json:"base_branch"` // Only relevant for branch mode
 }
 
 type FileDiff struct {
@@ -76,7 +80,7 @@ type StatusResponse struct {
 	Commit   string `json:"commit"`
 }
 
-func Start(port int, baseBranch string) error {
+func Start(port int, baseBranch string, mode string) error {
 	gitRepo, err := git.Open(".")
 	if err != nil {
 		return err
@@ -92,9 +96,19 @@ func Start(port int, baseBranch string) error {
 		return err
 	}
 
+	// Convert mode string to DiffMode
+	diffMode := git.DiffModeBranch
+	switch mode {
+	case "working":
+		diffMode = git.DiffModeWorking
+	case "staged":
+		diffMode = git.DiffModeStaged
+	}
+
 	appState := &AppState{
 		RepoPath:     repoPath,
 		BaseBranch:   baseBranch,
+		Mode:         diffMode,
 		StateManager: stateMgr,
 	}
 
@@ -113,7 +127,11 @@ func Start(port int, baseBranch string) error {
 
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	fmt.Printf("Starting server on http://%s\n", addr)
-	fmt.Printf("Comparing against base branch: %s\n", baseBranch)
+	fmt.Printf("Mode: %s", mode)
+	if mode == "branch" {
+		fmt.Printf(" (comparing against %s)", baseBranch)
+	}
+	fmt.Println()
 
 	return http.ListenAndServe(addr, r)
 }
@@ -147,15 +165,47 @@ func (s *AppState) diffHandler(w http.ResponseWriter, r *http.Request) {
 
 	remoteURL, _ := gitRepo.GetRemoteURL() // Ignore error, remote is optional
 
-	files, err := gitRepo.GetDiffFiles(s.BaseBranch)
+	// Check if mode is overridden via query param
+	mode := s.Mode
+	if modeParam := r.URL.Query().Get("mode"); modeParam != "" {
+		switch modeParam {
+		case "working":
+			mode = git.DiffModeWorking
+		case "staged":
+			mode = git.DiffModeStaged
+		case "branch":
+			mode = git.DiffModeBranch
+		}
+	}
+
+	files, err := gitRepo.GetDiff(mode, s.BaseBranch)
 	if err != nil {
+		// Check if it's a "branch not found" error (only relevant for branch mode)
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "reference not found") || strings.Contains(errMsg, "failed to find branch") {
+			detectedBranch := gitRepo.GetDefaultBranch()
+			http.Error(w, fmt.Sprintf(
+				"Base branch '%s' not found. This repository's default branch appears to be '%s'. "+
+					"Please configure guck with: guck config set base-branch %s",
+				s.BaseBranch, detectedBranch, detectedBranch,
+			), http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// For working/staged modes, use a synthetic commit identifier
+	stateCommit := currentCommit
+	if mode == git.DiffModeWorking {
+		stateCommit = "working"
+	} else if mode == git.DiffModeStaged {
+		stateCommit = "staged"
+	}
+
 	fileDiffs := []FileDiff{}
 	for _, file := range files {
-		viewed := s.StateManager.IsFileViewed(s.RepoPath, currentBranch, currentCommit, file.Path)
+		viewed := s.StateManager.IsFileViewed(s.RepoPath, currentBranch, stateCommit, file.Path)
 
 		fileDiffs = append(fileDiffs, FileDiff{
 			Path:      file.Path,
@@ -168,11 +218,13 @@ func (s *AppState) diffHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := DiffResponse{
-		Files:     fileDiffs,
-		Branch:    currentBranch,
-		Commit:    currentCommit,
-		RepoPath:  s.RepoPath,
-		RemoteURL: remoteURL,
+		Files:      fileDiffs,
+		Branch:     currentBranch,
+		Commit:     currentCommit,
+		RepoPath:   s.RepoPath,
+		RemoteURL:  remoteURL,
+		Mode:       string(mode),
+		BaseBranch: s.BaseBranch,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

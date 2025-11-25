@@ -16,6 +16,7 @@ type Info struct {
 	Port       int    `json:"port"`
 	RepoPath   string `json:"repo_path"`
 	BaseBranch string `json:"base_branch"`
+	Mode       string `json:"mode"` // "branch", "working", "staged"
 }
 
 type Registry struct {
