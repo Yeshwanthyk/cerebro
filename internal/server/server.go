@@ -456,19 +456,29 @@ func (s *AppState) getNotesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentCommit, err := gitRepo.CurrentCommit()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	filePath := r.URL.Query().Get("file_path")
 	var filePathPtr *string
 	if filePath != "" {
 		filePathPtr = &filePath
 	}
 
-	notes := s.StateManager.GetNotes(s.RepoPath, currentBranch, currentCommit, filePathPtr)
+	// Check mode - for working/staged modes, get all notes for the branch
+	// This ensures notes are visible regardless of which mode you're viewing
+	mode := r.URL.Query().Get("mode")
+	var notes []*state.Note
+
+	if mode == "working" || mode == "staged" {
+		// Get notes across all commits for this branch
+		notes = s.StateManager.GetNotesForBranch(s.RepoPath, currentBranch, filePathPtr)
+	} else {
+		// Branch mode - get notes for specific commit
+		currentCommit, err := gitRepo.CurrentCommit()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		notes = s.StateManager.GetNotes(s.RepoPath, currentBranch, currentCommit, filePathPtr)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(notes) // Ignore encode error for HTTP response
