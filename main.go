@@ -8,7 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/Yeshwanthyk/cerebro/internal/cli/commands"
-	"github.com/Yeshwanthyk/cerebro/internal/cli/helpers"
+
 	"github.com/Yeshwanthyk/cerebro/internal/config"
 	"github.com/Yeshwanthyk/cerebro/internal/daemon"
 	"github.com/Yeshwanthyk/cerebro/internal/git"
@@ -870,7 +870,7 @@ func addSampleNotes(c *cli.Context) error {
 
 	sampleNotes := []struct {
 		filePath   string
-		lineNumber *int
+		lineNumber int
 		text       string
 		author     string
 		noteType   string
@@ -878,7 +878,7 @@ func addSampleNotes(c *cli.Context) error {
 	}{
 		{
 			filePath:   "main.go",
-			lineNumber: helpers.IntPtr(42),
+			lineNumber: 42,
 			text:       "This function could benefit from better error handling. Consider wrapping errors with context using fmt.Errorf with %w verb for better error tracing.",
 			author:     "claude",
 			noteType:   "suggestion",
@@ -890,7 +890,7 @@ func addSampleNotes(c *cli.Context) error {
 		},
 		{
 			filePath:   "internal/server/server.go",
-			lineNumber: helpers.IntPtr(120),
+			lineNumber: 120,
 			text:       "The HTTP handler implements a proper REST API pattern. The use of gorilla/mux provides clean routing and the error handling follows Go best practices.",
 			author:     "claude",
 			noteType:   "explanation",
@@ -901,7 +901,7 @@ func addSampleNotes(c *cli.Context) error {
 		},
 		{
 			filePath:   "internal/git/git.go",
-			lineNumber: nil,
+			lineNumber: 1,
 			text:       "This module abstracts Git operations effectively. The design allows for easy testing and mocking. Consider adding integration tests for complex Git scenarios.",
 			author:     "copilot",
 			noteType:   "rationale",
@@ -912,7 +912,7 @@ func addSampleNotes(c *cli.Context) error {
 		},
 		{
 			filePath:   "internal/state/state.go",
-			lineNumber: helpers.IntPtr(85),
+			lineNumber: 85,
 			text:       "The state management uses a file-based approach which is simple and reliable. For larger datasets, consider adding indexing or using a lightweight database like SQLite.",
 			author:     "claude",
 			noteType:   "suggestion",
@@ -924,7 +924,7 @@ func addSampleNotes(c *cli.Context) error {
 		},
 		{
 			filePath:   "README.md",
-			lineNumber: nil,
+			lineNumber: 1,
 			text:       "Documentation is clear and well-structured. The installation instructions cover all major platforms and the usage examples are practical.",
 			author:     "copilot",
 			noteType:   "explanation",
@@ -935,7 +935,7 @@ func addSampleNotes(c *cli.Context) error {
 		},
 		{
 			filePath:   "internal/mcp/mcp.go",
-			lineNumber: helpers.IntPtr(200),
+			lineNumber: 200,
 			text:       "The MCP implementation follows the protocol specification correctly. This enables seamless integration with AI agents like Claude and GitHub Copilot for code review automation.",
 			author:     "claude",
 			noteType:   "explanation",

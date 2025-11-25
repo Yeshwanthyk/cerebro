@@ -63,7 +63,7 @@ type ResolveCommentRequest struct {
 
 type AddNoteRequest struct {
 	FilePath   string            `json:"file_path"`
-	LineNumber *int              `json:"line_number,omitempty"`
+	LineNumber int               `json:"line_number"`
 	Text       string            `json:"text"`
 	Author     string            `json:"author"`
 	Type       string            `json:"type,omitempty"`
@@ -340,6 +340,12 @@ func (s *AppState) getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Reload state to pick up external changes (e.g., from MCP)
+	if err := s.StateManager.Reload(); err != nil {
+		http.Error(w, fmt.Sprintf("failed to reload state: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	gitRepo, err := git.Open(".")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -447,6 +453,12 @@ func (s *AppState) resolveCommentHandler(w http.ResponseWriter, r *http.Request)
 func (s *AppState) getNotesHandler(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Reload state to pick up external changes (e.g., from MCP)
+	if err := s.StateManager.Reload(); err != nil {
+		http.Error(w, fmt.Sprintf("failed to reload state: %v", err), http.StatusInternalServerError)
+		return
+	}
 
 	gitRepo, err := git.Open(".")
 	if err != nil {

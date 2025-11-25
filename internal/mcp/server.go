@@ -221,7 +221,7 @@ func handleToolsList(request JSONRPCRequest) *JSONRPCResponse {
 					},
 					"line_number": map[string]interface{}{
 						"type":        "integer",
-						"description": "Line number for inline notes (optional)",
+						"description": "Line number in the file where the note applies (required)",
 					},
 					"text": map[string]interface{}{
 						"type":        "string",
@@ -236,7 +236,7 @@ func handleToolsList(request JSONRPCRequest) *JSONRPCResponse {
 						"description": "Note type: 'explanation', 'rationale', 'suggestion' (default: 'explanation')",
 					},
 				},
-				"required": []string{"branch", "commit", "file_path", "text", "author"},
+				"required": []string{"branch", "commit", "file_path", "line_number", "text", "author"},
 			},
 		},
 		{

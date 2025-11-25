@@ -123,9 +123,7 @@ func OutputHumanReadable(result interface{}) error {
 
 			fmt.Printf("[%s] ", note.ID[:8])
 			urlColor.Print(note.FilePath)
-			if note.LineNumber != nil {
-				fmt.Printf(":%d", *note.LineNumber)
-			}
+			fmt.Printf(":%d", note.LineNumber)
 			fmt.Printf(" (%s)\n", note.Author)
 
 			fmt.Printf("  Type: %s\n", note.Type)
@@ -215,10 +213,7 @@ func OutputNoteResultsAsToon(notes []mcp.NoteResult) error {
 	for _, note := range notes {
 		id := note.ID
 		file := note.FilePath
-		line := ""
-		if note.LineNumber != nil {
-			line = fmt.Sprintf("%d", *note.LineNumber)
-		}
+		line := fmt.Sprintf("%d", note.LineNumber)
 		author := note.Author
 		noteType := note.Type
 		dismissed := note.Dismissed

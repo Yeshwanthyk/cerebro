@@ -24,7 +24,7 @@ type Comment struct {
 type Note struct {
 	ID          string            `json:"id"`
 	FilePath    string            `json:"file_path"`
-	LineNumber  *int              `json:"line_number,omitempty"`
+	LineNumber  int               `json:"line_number"`
 	Text        string            `json:"text"`
 	Timestamp   int64             `json:"timestamp"`
 	Branch      string            `json:"branch"`
@@ -246,7 +246,7 @@ func (m *Manager) GetAllComments(repoPath string) []*Comment {
 	return allComments
 }
 
-func (m *Manager) AddNote(repoPath, branch, commit, filePath string, lineNumber *int, text, author, noteType string, metadata map[string]string) (*Note, error) {
+func (m *Manager) AddNote(repoPath, branch, commit, filePath string, lineNumber int, text, author, noteType string, metadata map[string]string) (*Note, error) {
 	if m.state.Repos[repoPath] == nil {
 		m.state.Repos[repoPath] = make(map[string]map[string]*RepoState)
 	}
@@ -381,6 +381,30 @@ func (m *Manager) save() error {
 		return fmt.Errorf("failed to write state file: %w", err)
 	}
 
+	return nil
+}
+
+// Reload reloads the state from disk (for picking up external changes like MCP additions)
+func (m *Manager) Reload() error {
+	if _, err := os.Stat(m.stateFile); err != nil {
+		// File doesn't exist yet, nothing to reload
+		return nil
+	}
+
+	data, err := os.ReadFile(m.stateFile)
+	if err != nil {
+		return fmt.Errorf("failed to read state file: %w", err)
+	}
+
+	state := &ViewedState{
+		Repos: make(map[string]map[string]map[string]*RepoState),
+	}
+
+	if err := json.Unmarshal(data, state); err != nil {
+		return fmt.Errorf("failed to unmarshal state: %w", err)
+	}
+
+	m.state = state
 	return nil
 }
 

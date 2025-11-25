@@ -46,11 +46,8 @@ func AddNote(c *cli.Context) error {
 		Type:     noteType,
 	}
 
-	// Handle line number
-	if c.IsSet("line") {
-		line := c.Int("line")
-		params.LineNumber = &line
-	}
+	// Handle line number (required)
+	params.LineNumber = c.Int("line")
 
 	// Handle metadata
 	if c.IsSet("metadata") {

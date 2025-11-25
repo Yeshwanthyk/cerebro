@@ -27,7 +27,7 @@ type AddNoteParams struct {
 	Branch     string            `json:"branch"`
 	Commit     string            `json:"commit"`
 	FilePath   string            `json:"file_path"`
-	LineNumber *int              `json:"line_number,omitempty"`
+	LineNumber int               `json:"line_number"`
 	Text       string            `json:"text"`
 	Author     string            `json:"author"`
 	Type       string            `json:"type,omitempty"`
@@ -65,7 +65,7 @@ type CommentResult struct {
 type NoteResult struct {
 	ID          string            `json:"id"`
 	FilePath    string            `json:"file_path"`
-	LineNumber  *int              `json:"line_number,omitempty"`
+	LineNumber  int               `json:"line_number"`
 	Text        string            `json:"text"`
 	Timestamp   int64             `json:"timestamp"`
 	Branch      string            `json:"branch"`
@@ -156,7 +156,7 @@ func ListTools() map[string]interface{} {
 					},
 					"line_number": map[string]interface{}{
 						"type":        "integer",
-						"description": "Optional: Line number for inline notes",
+						"description": "Line number in the file where the note applies (required)",
 					},
 					"text": map[string]interface{}{
 						"type":        "string",
@@ -175,7 +175,7 @@ func ListTools() map[string]interface{} {
 						"description": "Optional: Additional metadata as key-value pairs",
 					},
 				},
-				"required": []string{"repo_path", "branch", "commit", "file_path", "text", "author"},
+				"required": []string{"repo_path", "branch", "commit", "file_path", "line_number", "text", "author"},
 			},
 		},
 		{
