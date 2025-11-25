@@ -124,6 +124,10 @@ func Start(port int, baseBranch string, mode string) error {
 	r.HandleFunc("/api/notes", appState.getNotesHandler).Methods("GET")
 	r.HandleFunc("/api/notes", appState.addNoteHandler).Methods("POST")
 	r.HandleFunc("/api/notes/dismiss", appState.dismissNoteHandler).Methods("POST")
+	r.HandleFunc("/api/stage", appState.stageHandler).Methods("POST")
+	r.HandleFunc("/api/unstage", appState.unstageHandler).Methods("POST")
+	r.HandleFunc("/api/discard", appState.discardHandler).Methods("POST")
+	r.HandleFunc("/api/commit", appState.commitHandler).Methods("POST")
 
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	fmt.Printf("Starting server on http://%s\n", addr)
@@ -572,4 +576,106 @@ func (s *AppState) dismissNoteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// Git operation request types
+type FilePathRequest struct {
+	FilePath string `json:"file_path"`
+}
+
+type CommitRequest struct {
+	Message string `json:"message"`
+}
+
+func (s *AppState) stageHandler(w http.ResponseWriter, r *http.Request) {
+	var payload FilePathRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	gitRepo, err := git.Open(".")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := gitRepo.Stage(payload.FilePath); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+func (s *AppState) unstageHandler(w http.ResponseWriter, r *http.Request) {
+	var payload FilePathRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	gitRepo, err := git.Open(".")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := gitRepo.Unstage(payload.FilePath); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+func (s *AppState) discardHandler(w http.ResponseWriter, r *http.Request) {
+	var payload FilePathRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	gitRepo, err := git.Open(".")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := gitRepo.Discard(payload.FilePath); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+func (s *AppState) commitHandler(w http.ResponseWriter, r *http.Request) {
+	var payload CommitRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if payload.Message == "" {
+		http.Error(w, "Commit message is required", http.StatusBadRequest)
+		return
+	}
+
+	gitRepo, err := git.Open(".")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := gitRepo.Commit(payload.Message); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }

@@ -26,6 +26,7 @@ const (
 
 type Repo struct {
 	repo *git.Repository
+	path string
 }
 
 type FileInfo struct {
@@ -44,7 +45,7 @@ func Open(path string) (*Repo, error) {
 		return nil, fmt.Errorf("failed to find git repository: %w", err)
 	}
 
-	return &Repo{repo: repo}, nil
+	return &Repo{repo: repo, path: path}, nil
 }
 
 func (r *Repo) CurrentBranch() (string, error) {
@@ -428,4 +429,32 @@ func (r *Repo) GetDiff(mode DiffMode, baseBranch string) ([]FileInfo, error) {
 	default:
 		return r.GetDiffFiles(baseBranch)
 	}
+}
+
+// Stage adds a file to the staging area
+func (r *Repo) Stage(filePath string) error {
+	cmd := exec.Command("git", "add", filePath)
+	cmd.Dir = r.path
+	return cmd.Run()
+}
+
+// Unstage removes a file from the staging area
+func (r *Repo) Unstage(filePath string) error {
+	cmd := exec.Command("git", "reset", "HEAD", filePath)
+	cmd.Dir = r.path
+	return cmd.Run()
+}
+
+// Discard reverts a file to its last committed state
+func (r *Repo) Discard(filePath string) error {
+	cmd := exec.Command("git", "checkout", "--", filePath)
+	cmd.Dir = r.path
+	return cmd.Run()
+}
+
+// Commit creates a new commit with the staged changes
+func (r *Repo) Commit(message string) error {
+	cmd := exec.Command("git", "commit", "-m", message)
+	cmd.Dir = r.path
+	return cmd.Run()
 }
