@@ -1020,7 +1020,7 @@
                                         Unstage
                                     </button>
                                 )}
-                                {(mode === 'working' || mode === 'branch') && file.status !== 'untracked' && (
+                                {(mode === 'working' || mode === 'branch') && (
                                     <button
                                         onClick={() => onDiscard(file.path)}
                                         style={{

@@ -445,11 +445,19 @@ func (r *Repo) Unstage(filePath string) error {
 	return cmd.Run()
 }
 
-// Discard reverts a file to its last committed state
+// Discard reverts a file to its last committed state, or deletes untracked files
 func (r *Repo) Discard(filePath string) error {
+	// First try git checkout (for tracked files)
 	cmd := exec.Command("git", "checkout", "--", filePath)
 	cmd.Dir = r.path
-	return cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		// If checkout fails, try git clean for untracked files
+		cmd = exec.Command("git", "clean", "-f", filePath)
+		cmd.Dir = r.path
+		return cmd.Run()
+	}
+	return nil
 }
 
 // Commit creates a new commit with the staged changes
