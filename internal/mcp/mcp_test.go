@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tuist/guck/internal/state"
+	"github.com/Yeshwanthyk/cerebro/internal/state"
 )
 
 // Create a test manager with a temporary state file
