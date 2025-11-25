@@ -387,11 +387,11 @@ func (m *Manager) save() error {
 func getStateDir() (string, error) {
 	// Use XDG_STATE_HOME on Unix, or fallback to XDG_DATA_HOME/LocalAppData
 	if stateHome := os.Getenv("XDG_STATE_HOME"); stateHome != "" {
-		return filepath.Join(stateHome, "guck"), nil
+		return filepath.Join(stateHome, "cerebro"), nil
 	}
 
 	if dataHome := os.Getenv("XDG_DATA_HOME"); dataHome != "" {
-		return filepath.Join(dataHome, "guck"), nil
+		return filepath.Join(dataHome, "cerebro"), nil
 	}
 
 	home, err := os.UserHomeDir()
@@ -400,5 +400,5 @@ func getStateDir() (string, error) {
 	}
 
 	// Platform-specific defaults
-	return filepath.Join(home, ".local", "state", "guck"), nil
+	return filepath.Join(home, ".local", "state", "cerebro"), nil
 }
