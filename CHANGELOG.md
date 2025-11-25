@@ -89,7 +89,7 @@ All notable changes to this project will be documented in this file.
 
 ### 🐛 Bug Fixes
 
-- Change Guck title to link to GitHub repository ([b87d3bc](b87d3bc5fa446a3b42c34eb727b996b99711de6b))
+- Change Cerebro title to link to GitHub repository ([b87d3bc](b87d3bc5fa446a3b42c34eb727b996b99711de6b))
 
 ## [0.3.2] - 2025-11-22
 
@@ -142,11 +142,11 @@ All notable changes to this project will be documented in this file.
 
 ### 🚀 Features
 
-- Initial implementation of guck CLI ([781f0ae](781f0aef1c82e35ce014d46b05377796d748e82f))
+- Initial implementation of cerebro CLI ([781f0ae](781f0aef1c82e35ce014d46b05377796d748e82f))
 - [**breaking**] Implement daemon-based architecture with auto-start ([c63f411](c63f41192b6cd8a103a633c08f1969e7322cb8ce))
 - Use random port allocation for daemon processes ([edd1b34](edd1b34e0be7dfa1b494426e853838579f80e64b))
 - Implement random port allocation in daemon manager ([2e1bbfc](2e1bbfcc74d5924a640569b43850f0f2399350b9))
-- Add 'guck start' command to run server in foreground ([bff5e31](bff5e314791cd1afd973d5dd2f25df0ae72f3602))
-- Reimplement guck in Go ([3d4e5bb](3d4e5bbc30908091646e2ae6bf8b583e83323c09))
+- Add 'cerebro start' command to run server in foreground ([bff5e31](bff5e314791cd1afd973d5dd2f25df0ae72f3602))
+- Reimplement cerebro in Go ([3d4e5bb](3d4e5bbc30908091646e2ae6bf8b583e83323c09))
 
 

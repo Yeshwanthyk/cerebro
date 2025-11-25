@@ -1,8 +1,8 @@
-# AGENTS.md — AI Agent Guidelines for Guck Development
+# AGENTS.md — AI Agent Guidelines for Cerebro Development
 
 ## Overview
 
-Guck is a Git diff review tool written in Go with a React-based web interface. It runs as a background daemon that automatically starts when you enter a git repository.
+Cerebro is a Git diff review tool written in Go with a React-based web interface. It runs as a background daemon that automatically starts when you enter a git repository.
 
 ## Architecture
 
@@ -37,7 +37,7 @@ Guck is a Git diff review tool written in Go with a React-based web interface. I
    - Model Context Protocol server for LLM integration
    - Allows AI agents to query and resolve comments
    - **5 MCP tools:** `list_comments`, `resolve_comment`, `add_note`, `list_notes`, `dismiss_note`
-   - Standalone CLI at `~/commands/guck-mcp` (generated via mcporter)
+   - Standalone CLI at `~/commands/cerebro-mcp` (generated via mcporter)
 
 7. **Frontend** (`static/index.html`, `internal/server/static/`)
    - Single-page React app (embedded via `//go:embed`)
@@ -49,7 +49,7 @@ Guck is a Git diff review tool written in Go with a React-based web interface. I
 ### Building
 
 ```bash
-go build -o guck .
+go build -o cerebro .
 ```
 
 ### Testing
@@ -62,11 +62,11 @@ go test ./...
 
 ```bash
 # Start server for current repo
-./guck start
+./cerebro start
 
 # Or use daemon mode
-./guck daemon start
-./guck  # Opens browser
+./cerebro daemon start
+./cerebro  # Opens browser
 ```
 
 ### MCP Changes Checklist
@@ -77,50 +77,50 @@ When modifying MCP tools, follow these steps:
    - `internal/mcp/mcp.go` - tool implementations and schema
    - `internal/mcp/server.go` - tool schema in `handleToolsList()`
 
-2. **Rebuild guck binary:**
+2. **Rebuild cerebro binary:**
    ```bash
-   cd /path/to/guck
-   go build -o guck .
-   cp guck ~/commands/guck
+   cd /path/to/cerebro
+   go build -o cerebro .
+   cp cerebro ~/commands/cerebro
    ```
 
-3. **Regenerate guck-mcp CLI:**
+3. **Regenerate cerebro-mcp CLI:**
    ```bash
    npx mcporter generate-cli \
-     --command "~/commands/guck mcp" \
-     --name guck-mcp \
-     --compile ~/commands/guck-mcp
+     --command "~/commands/cerebro mcp" \
+     --name cerebro-mcp \
+     --compile ~/commands/cerebro-mcp
    ```
 
 4. **Test the changes:**
    ```bash
    # Verify CLI works
-   guck-mcp --help
-   guck-mcp list-comments
+   cerebro-mcp --help
+   cerebro-mcp list-comments
    
    # Or test via mcporter directly
-   npx mcporter call --stdio "~/commands/guck mcp" 'list_comments()'
+   npx mcporter call --stdio "~/commands/cerebro mcp" 'list_comments()'
    ```
 
-### Using guck-mcp Tools
+### Using cerebro-mcp Tools
 
 **Via the generated CLI:**
 ```bash
-guck-mcp list-comments --resolved false
-guck-mcp resolve-comment --comment-id "123-0"
-guck-mcp add-note --file-path "src/foo.ts" --text "Explanation" --author "claude" --branch "main" --commit "abc123"
+cerebro-mcp list-comments --resolved false
+cerebro-mcp resolve-comment --comment-id "123-0"
+cerebro-mcp add-note --file-path "src/foo.ts" --text "Explanation" --author "claude" --branch "main" --commit "abc123"
 ```
 
 **Via mcporter (more reliable for optional args):**
 ```bash
 # List unresolved comments
-npx mcporter call --stdio "~/commands/guck mcp" 'list_comments(resolved: false)'
+npx mcporter call --stdio "~/commands/cerebro mcp" 'list_comments(resolved: false)'
 
 # Resolve a comment (resolved_by defaults to "agent")
-npx mcporter call --stdio "~/commands/guck mcp" 'resolve_comment(comment_id: "123-0")'
+npx mcporter call --stdio "~/commands/cerebro mcp" 'resolve_comment(comment_id: "123-0")'
 
 # Add a note
-npx mcporter call --stdio "~/commands/guck mcp" 'add_note(file_path: "src/foo.ts", text: "Rationale here", author: "claude", branch: "main", commit: "abc123")'
+npx mcporter call --stdio "~/commands/cerebro mcp" 'add_note(file_path: "src/foo.ts", text: "Rationale here", author: "claude", branch: "main", commit: "abc123")'
 ```
 
 **Note:** The generated CLI has a known issue with optional arguments - use `npx mcporter call --stdio` if you encounter "Missing required arguments" errors for fields that should be optional.
@@ -177,7 +177,7 @@ npx mcporter call --stdio "~/commands/guck mcp" 'add_note(file_path: "src/foo.ts
 1. Define data structure in `internal/state/state.go`
 2. Add methods to `Manager` for CRUD operations
 3. Use `s.StateManager` in server handlers
-4. State is automatically saved to `$XDG_DATA_HOME/guck/`
+4. State is automatically saved to `$XDG_DATA_HOME/cerebro/`
 
 ### Working with Git Operations
 
@@ -196,7 +196,7 @@ files, _ := gitRepo.GetDiffFiles(baseBranch)
 ## File Organization
 
 ```
-guck/
+cerebro/
 ├── main.go                    # CLI entry point
 ├── internal/
 │   ├── cli/                   # Command implementations
@@ -241,7 +241,7 @@ When modifying this codebase:
 7. **MCP schema consistency** - When modifying MCP tools:
    - Update both `internal/mcp/mcp.go` (implementation) AND `internal/mcp/server.go` (schema)
    - Schemas in `handleToolsList()` must match function signatures
-   - After changes, regenerate `guck-mcp` CLI (see "Regenerating guck-mcp CLI" above)
+   - After changes, regenerate `cerebro-mcp` CLI (see "Regenerating cerebro-mcp CLI" above)
 
 ## Tool Selection for Development
 

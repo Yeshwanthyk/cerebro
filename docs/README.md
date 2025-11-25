@@ -1,6 +1,6 @@
-# Guck Documentation
+# Cerebro Documentation
 
-Comprehensive documentation for Guck, a Git diff review tool with web interface and MCP server integration.
+Comprehensive documentation for Cerebro, a Git diff review tool with web interface and MCP server integration.
 
 ## Table of Contents
 
@@ -22,12 +22,12 @@ Comprehensive documentation for Guck, a Git diff review tool with web interface 
 ### Using mise (recommended)
 
 ```bash
-mise use -g guck@latest
+mise use -g cerebro@latest
 ```
 
 ### Download binary
 
-Download the latest release for your platform from the [releases page](https://github.com/tuist/guck/releases).
+Download the latest release for your platform from the [releases page](https://github.com/Yeshwanthyk/cerebro/releases).
 
 Binaries are available for:
 - Linux (amd64, arm64)
@@ -37,9 +37,9 @@ Binaries are available for:
 ### From source
 
 ```bash
-git clone https://github.com/tuist/guck
-cd guck
-go build -o guck .
+git clone https://github.com/Yeshwanthyk/cerebro
+cd cerebro
+go build -o cerebro .
 ```
 
 ## Setup
@@ -48,7 +48,7 @@ After installing, add this to your shell configuration file (`~/.bashrc`, `~/.zs
 
 ```bash
 # For Bash/Zsh
-eval "$(guck init)"
+eval "$(cerebro init)"
 ```
 
 This enables automatic daemon management when entering/leaving git repositories.
@@ -61,13 +61,13 @@ Once set up, simply navigate to any git repository:
 
 ```bash
 cd /path/to/your/repo
-# Guck daemon automatically starts in the background
+# Cerebro daemon automatically starts in the background
 ```
 
 Then open the web interface:
 
 ```bash
-guck
+cerebro
 # Opens your default browser to view the diff
 ```
 
@@ -81,48 +81,48 @@ The daemon will:
 
 ```bash
 # Start the daemon manually
-guck daemon start
+cerebro daemon start
 
 # Stop the daemon for the current repo
-guck daemon stop
+cerebro daemon stop
 
-# Stop all guck daemons
-guck daemon stop-all
+# Stop all cerebro daemons
+cerebro daemon stop-all
 
-# List all running guck servers
-guck daemon list
+# List all running cerebro servers
+cerebro daemon list
 
 # Clean up stale daemon entries
-guck daemon cleanup
+cerebro daemon cleanup
 ```
 
 ### Configuration
 
 ```bash
 # Set the base branch (default: main)
-guck config set base-branch develop
+cerebro config set base-branch develop
 
 # Get current base branch
-guck config get base-branch
+cerebro config get base-branch
 
 # Show all configuration
-guck config show
+cerebro config show
 ```
 
 #### Configuration Files
 
-Guck stores its data in XDG-compliant directories:
+Cerebro stores its data in XDG-compliant directories:
 
-- **State**: `~/.local/state/guck/` - Port mappings, daemon PIDs, viewed files, comments
-- **Config**: `~/.config/guck/` - User configuration (base branch, etc.)
+- **State**: `~/.local/state/cerebro/` - Port mappings, daemon PIDs, viewed files, comments
+- **Config**: `~/.config/cerebro/` - User configuration (base branch, etc.)
 
 ## MCP Server Integration
 
-Guck includes a Model Context Protocol (MCP) server that allows LLMs like Claude to interact with code review comments. This enables AI assistants to query comments, resolve issues, and integrate with your code review workflow.
+Cerebro includes a Model Context Protocol (MCP) server that allows LLMs like Claude to interact with code review comments. This enables AI assistants to query comments, resolve issues, and integrate with your code review workflow.
 
 ### Claude Code Integration
 
-To integrate Guck with Claude Code (or Claude Desktop), add the following to your MCP configuration file:
+To integrate Cerebro with Claude Code (or Claude Desktop), add the following to your MCP configuration file:
 
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
@@ -137,30 +137,30 @@ If you have [mise](https://mise.jdx.dev/) installed:
 ```json
 {
   "mcpServers": {
-    "guck": {
+    "cerebro": {
       "command": "mise",
-      "args": ["x", "ubi:tuist/guck@latest", "--", "guck", "mcp"]
+      "args": ["x", "ubi:tuist/cerebro@latest", "--", "cerebro", "mcp"]
     }
   }
 }
 ```
 
-This ensures you always use the latest version of Guck without needing to specify a full path.
+This ensures you always use the latest version of Cerebro without needing to specify a full path.
 
 #### Using a direct path
 
 ```json
 {
   "mcpServers": {
-    "guck": {
-      "command": "/path/to/guck",
+    "cerebro": {
+      "command": "/path/to/cerebro",
       "args": ["mcp"]
     }
   }
 }
 ```
 
-After adding this configuration, restart Claude Code/Desktop. Guck will be available as an MCP server, allowing Claude to:
+After adding this configuration, restart Claude Code/Desktop. Cerebro will be available as an MCP server, allowing Claude to:
 - List code review comments from your repositories
 - Filter comments by file, branch, commit, or resolution status
 - Mark comments as resolved
@@ -430,7 +430,7 @@ Once configured, you can ask Claude to interact with both comments and notes:
 ### Building
 
 ```bash
-go build -o guck .
+go build -o cerebro .
 ```
 
 ### Running locally
@@ -511,7 +511,7 @@ go test ./...
 
 ### MCP Protocol Implementation
 
-Guck implements the Model Context Protocol (MCP) specification:
+Cerebro implements the Model Context Protocol (MCP) specification:
 
 1. **Transport**: stdio (standard input/output streams)
 2. **Encoding**: JSON-RPC 2.0
@@ -535,25 +535,25 @@ If you see a "port already in use" error:
 
 ```bash
 # List running daemons
-guck daemon list
+cerebro daemon list
 
 # Clean up stale entries
-guck daemon cleanup
+cerebro daemon cleanup
 
 # Or stop all daemons
-guck daemon stop-all
+cerebro daemon stop-all
 ```
 
 ### MCP server not appearing in Claude Code
 
 1. Check the configuration file path for your platform
-2. Ensure the `command` path points to the correct guck binary
+2. Ensure the `command` path points to the correct cerebro binary
 3. Restart Claude Code/Desktop after modifying the configuration
 4. Check Claude's logs for MCP server errors
 
 ### Comments not persisting
 
-Comments are stored in `~/.local/state/guck/state.json`. If they're not persisting:
+Comments are stored in `~/.local/state/cerebro/state.json`. If they're not persisting:
 
 1. Check file permissions
 2. Ensure the directory exists and is writable

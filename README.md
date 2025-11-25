@@ -1,9 +1,9 @@
-# Guck
+# Cerebro
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-A Git diff review tool with a web interface, inspired by GitHub's pull request UI. Guck runs as a background daemon that automatically starts when you enter a git repository.
+A Git diff review tool with a web interface, inspired by GitHub's pull request UI. Cerebro runs as a background daemon that automatically starts when you enter a git repository.
 
 ## Features
 
@@ -24,10 +24,10 @@ A Git diff review tool with a web interface, inspired by GitHub's pull request U
 
 ```bash
 # Using mise (recommended)
-mise use -g github:tuist/guck@latest
+mise use -g github:tuist/cerebro@latest
 
 # Or download from releases
-# https://github.com/tuist/guck/releases
+# https://github.com/Yeshwanthyk/cerebro/releases
 ```
 
 ### Setup
@@ -35,14 +35,14 @@ mise use -g github:tuist/guck@latest
 Add to your shell configuration (`~/.bashrc`, `~/.zshrc`, etc.):
 
 ```bash
-eval "$(guck init)"
+eval "$(cerebro init)"
 ```
 
 ### Usage
 
 ```bash
 cd /path/to/your/repo  # Daemon starts automatically
-guck                   # Opens browser to review diffs
+cerebro                   # Opens browser to review diffs
 ```
 
 ## MCP Integration
@@ -56,8 +56,8 @@ Add to your Claude Desktop configuration:
 ```json
 {
   "mcpServers": {
-    "guck": {
-      "command": "/path/to/guck",
+    "cerebro": {
+      "command": "/path/to/cerebro",
       "args": ["mcp"]
     }
   }
@@ -71,31 +71,31 @@ Restart Claude Code, and you can ask Claude to:
 
 ### Option 2: Standalone CLI via mcporter
 
-Generate a standalone `guck-mcp` CLI for all MCP tools:
+Generate a standalone `cerebro-mcp` CLI for all MCP tools:
 
 ```bash
 # Install mcporter
 npm install -g mcporter
 
-# Generate CLI (run from guck source directory)
+# Generate CLI (run from cerebro source directory)
 npx mcporter generate-cli \
-  --command "/path/to/guck mcp" \
-  --name guck-mcp \
-  --description "Guck code review MCP tools" \
-  --bundle dist/guck-mcp.js
+  --command "/path/to/cerebro mcp" \
+  --name cerebro-mcp \
+  --description "Cerebro code review MCP tools" \
+  --bundle dist/cerebro-mcp.js
 
 # Install to PATH
-chmod +x dist/guck-mcp.js
-ln -s $(pwd)/dist/guck-mcp.js ~/commands/guck-mcp
+chmod +x dist/cerebro-mcp.js
+ln -s $(pwd)/dist/cerebro-mcp.js ~/commands/cerebro-mcp
 ```
 
 **Usage:**
 ```bash
-guck-mcp list-comments --resolved false
-guck-mcp resolve-comment --comment-id "123-4" --resolved-by hsey
-guck-mcp add-note --branch main --commit HEAD --file-path main.go --text "..." --author hsey
-guck-mcp list-notes --dismissed false
-guck-mcp dismiss-note --note-id "456-7" --dismissed-by hsey
+cerebro-mcp list-comments --resolved false
+cerebro-mcp resolve-comment --comment-id "123-4" --resolved-by hsey
+cerebro-mcp add-note --branch main --commit HEAD --file-path main.go --text "..." --author hsey
+cerebro-mcp list-notes --dismissed false
+cerebro-mcp dismiss-note --note-id "456-7" --dismissed-by hsey
 ```
 
 ## Documentation
@@ -113,14 +113,14 @@ For comprehensive documentation, see [docs/README.md](docs/README.md):
 
 ```bash
 # Daemon management
-guck daemon start      # Start daemon manually
-guck daemon stop       # Stop current repo's daemon
-guck daemon list       # List all running daemons
-guck daemon stop-all   # Stop all daemons
+cerebro daemon start      # Start daemon manually
+cerebro daemon stop       # Stop current repo's daemon
+cerebro daemon list       # List all running daemons
+cerebro daemon stop-all   # Stop all daemons
 
 # Configuration
-guck config set base-branch develop
-guck config show
+cerebro config set base-branch develop
+cerebro config show
 ```
 
 ## How It Works
@@ -145,7 +145,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="http://www.jeffreyguenther.com"><img src="https://avatars.githubusercontent.com/u/1348928?v=4?s=100" width="100px;" alt="Jeffrey Guenther"/><br /><sub><b>Jeffrey Guenther</b></sub></a><br /><a href="https://github.com/tuist/guck/commits?author=jeffreyguenther" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://www.jeffreyguenther.com"><img src="https://avatars.githubusercontent.com/u/1348928?v=4?s=100" width="100px;" alt="Jeffrey Guenther"/><br /><sub><b>Jeffrey Guenther</b></sub></a><br /><a href="https://github.com/Yeshwanthyk/cerebro/commits?author=jeffreyguenther" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
