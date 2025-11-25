@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tuist/guck/internal/cli/formatters"
-	"github.com/tuist/guck/internal/mcp"
+	"github.com/Yeshwanthyk/cerebro/internal/cli/formatters"
+	"github.com/Yeshwanthyk/cerebro/internal/mcp"
 	"github.com/urfave/cli/v2"
 )
 
-// ListComments handles the "guck comments list" command
+// ListComments handles the "cerebro comments list" command
 func ListComments(c *cli.Context) error {
 	repoPath := c.String("repo")
 	branch := c.String("branch")
@@ -55,7 +55,7 @@ func ListComments(c *cli.Context) error {
 	return formatters.OutputResult(result, format)
 }
 
-// ResolveComment handles the "guck comments resolve" command
+// ResolveComment handles the "cerebro comments resolve" command
 func ResolveComment(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return fmt.Errorf("requires exactly 1 argument: comment-id")

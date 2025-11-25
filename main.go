@@ -7,14 +7,14 @@ import (
 	"runtime"
 
 	"github.com/fatih/color"
-	"github.com/tuist/guck/internal/cli/commands"
-	"github.com/tuist/guck/internal/cli/helpers"
-	"github.com/tuist/guck/internal/config"
-	"github.com/tuist/guck/internal/daemon"
-	"github.com/tuist/guck/internal/git"
-	"github.com/tuist/guck/internal/mcp"
-	"github.com/tuist/guck/internal/server"
-	"github.com/tuist/guck/internal/state"
+	"github.com/Yeshwanthyk/cerebro/internal/cli/commands"
+	"github.com/Yeshwanthyk/cerebro/internal/cli/helpers"
+	"github.com/Yeshwanthyk/cerebro/internal/config"
+	"github.com/Yeshwanthyk/cerebro/internal/daemon"
+	"github.com/Yeshwanthyk/cerebro/internal/git"
+	"github.com/Yeshwanthyk/cerebro/internal/mcp"
+	"github.com/Yeshwanthyk/cerebro/internal/server"
+	"github.com/Yeshwanthyk/cerebro/internal/state"
 	"github.com/urfave/cli/v2"
 )
 
@@ -28,7 +28,7 @@ var (
 
 func main() {
 	app := &cli.App{
-		Name:  "guck",
+		Name:  "cerebro",
 		Usage: "A Git diff review tool with a web interface",
 		Commands: []*cli.Command{
 			{
@@ -432,7 +432,7 @@ func startServerForeground(c *cli.Context) error {
 		return err
 	}
 
-	successColor.Printf("✓ Starting guck server for %s\n", repoPath)
+	successColor.Printf("✓ Starting cerebro server for %s\n", repoPath)
 	infoColor.Printf("Mode: %s", mode)
 	if mode == "branch" {
 		infoColor.Printf(" (comparing against %s)", baseBranch)
@@ -447,57 +447,57 @@ func startServerForeground(c *cli.Context) error {
 
 func printShellIntegration(c *cli.Context) error {
 	script := `
-# Guck shell integration
+# Cerebro shell integration
 
 # Track the current git repository path
-_GUCK_CURRENT_REPO=""
+_CEREBRO_CURRENT_REPO=""
 
 # Get the repository path for the current directory
-_guck_get_repo_path() {
+_cerebro_get_repo_path() {
     if git rev-parse --show-toplevel >/dev/null 2>&1; then
         git rev-parse --show-toplevel 2>/dev/null
     fi
 }
 
 # Auto-start/stop daemons based on directory changes
-_guck_auto_manage() {
-    if ! command -v guck >/dev/null 2>&1; then
+_cerebro_auto_manage() {
+    if ! command -v cerebro >/dev/null 2>&1; then
         return
     fi
 
     local new_repo
-    new_repo=$(_guck_get_repo_path)
+    new_repo=$(_cerebro_get_repo_path)
 
     # If we left a git repo, stop its daemon
-    if [ -n "$_GUCK_CURRENT_REPO" ] && [ "$_GUCK_CURRENT_REPO" != "$new_repo" ]; then
-        (cd "$_GUCK_CURRENT_REPO" && guck daemon stop >/dev/null 2>&1 &)
+    if [ -n "$_CEREBRO_CURRENT_REPO" ] && [ "$_CEREBRO_CURRENT_REPO" != "$new_repo" ]; then
+        (cd "$_CEREBRO_CURRENT_REPO" && cerebro daemon stop >/dev/null 2>&1 &)
     fi
 
     # If we entered a git repo, start its daemon
-    if [ -n "$new_repo" ] && [ "$_GUCK_CURRENT_REPO" != "$new_repo" ]; then
-        (guck daemon start >/dev/null 2>&1 &)
+    if [ -n "$new_repo" ] && [ "$_CEREBRO_CURRENT_REPO" != "$new_repo" ]; then
+        (cerebro daemon start >/dev/null 2>&1 &)
         if [ $? -eq 0 ]; then
-            printf "\033[1;36m→\033[0m Run \033[1;34mguck\033[0m to inspect the project's diff\n"
+            printf "\033[1;36m→\033[0m Run \033[1;34mcerebro\033[0m to inspect the project's diff\n"
         fi
     fi
 
     # Update the tracked repo path
-    _GUCK_CURRENT_REPO="$new_repo"
+    _CEREBRO_CURRENT_REPO="$new_repo"
 }
 
 # Hook into cd command
 if [ -n "$ZSH_VERSION" ]; then
-    chpwd_functions+=(_guck_auto_manage)
+    chpwd_functions+=(_cerebro_auto_manage)
 elif [ -n "$BASH_VERSION" ]; then
-    _guck_original_cd=$(declare -f cd)
+    _cerebro_original_cd=$(declare -f cd)
     cd() {
         builtin cd "$@"
-        _guck_auto_manage
+        _cerebro_auto_manage
     }
 fi
 
 # Initialize for current directory if it's a git repo
-_guck_auto_manage
+_cerebro_auto_manage
 `
 	fmt.Println(script)
 	return nil
@@ -559,7 +559,7 @@ func startDaemon(c *cli.Context) error {
 	}
 
 	// Check if we're the daemon process
-	if os.Getenv("GUCK_DAEMON") == "1" {
+	if os.Getenv("CEREBRO_DAEMON") == "1" {
 		daemonInfo := &daemon.Info{
 			PID:        os.Getpid(),
 			Port:       port,
@@ -594,7 +594,7 @@ func startDaemon(c *cli.Context) error {
 	}
 
 	cmd := exec.Command(exe, args...)
-	cmd.Env = append(os.Environ(), "GUCK_DAEMON=1")
+	cmd.Env = append(os.Environ(), "CEREBRO_DAEMON=1")
 	cmd.Dir = repoPath
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
@@ -730,12 +730,12 @@ func openBrowser(c *cli.Context) error {
 
 	info, err := daemonMgr.GetDaemonForRepo(repoPath)
 	if err != nil || info == nil {
-		return fmt.Errorf("no daemon running for this repository. Run 'guck daemon start' first")
+		return fmt.Errorf("no daemon running for this repository. Run 'cerebro daemon start' first")
 	}
 
 	if !daemonMgr.IsDaemonRunning(info.PID) {
 		_ = daemonMgr.UnregisterDaemon(repoPath)
-		return fmt.Errorf("daemon is not running. Run 'guck daemon start' first")
+		return fmt.Errorf("daemon is not running. Run 'cerebro daemon start' first")
 	}
 
 	url := fmt.Sprintf("http://localhost:%d", info.Port)

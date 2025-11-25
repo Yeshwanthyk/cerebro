@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	"github.com/tuist/guck/internal/mcp"
+	"github.com/Yeshwanthyk/cerebro/internal/mcp"
 )
 
 var (

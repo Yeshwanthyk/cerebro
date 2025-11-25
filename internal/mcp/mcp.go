@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/tuist/guck/internal/state"
+	"github.com/Yeshwanthyk/cerebro/internal/state"
 )
 
 type ListCommentsParams struct {

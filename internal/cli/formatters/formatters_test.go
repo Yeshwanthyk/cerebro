@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/tuist/guck/internal/mcp"
+	"github.com/Yeshwanthyk/cerebro/internal/mcp"
 )
 
 func TestOutputJSON(t *testing.T) {

@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tuist/guck/internal/cli/formatters"
-	"github.com/tuist/guck/internal/cli/helpers"
-	"github.com/tuist/guck/internal/git"
-	"github.com/tuist/guck/internal/mcp"
+	"github.com/Yeshwanthyk/cerebro/internal/cli/formatters"
+	"github.com/Yeshwanthyk/cerebro/internal/cli/helpers"
+	"github.com/Yeshwanthyk/cerebro/internal/git"
+	"github.com/Yeshwanthyk/cerebro/internal/mcp"
 	"github.com/urfave/cli/v2"
 )
 
-// AddNote handles the "guck notes add" command
+// AddNote handles the "cerebro notes add" command
 func AddNote(c *cli.Context) error {
 	repoPath := c.String("repo")
 	filePath := c.String("file")
@@ -79,7 +79,7 @@ func AddNote(c *cli.Context) error {
 	return formatters.OutputResult(result, format)
 }
 
-// ListNotes handles the "guck notes list" command
+// ListNotes handles the "cerebro notes list" command
 func ListNotes(c *cli.Context) error {
 	repoPath := c.String("repo")
 	branch := c.String("branch")
@@ -127,7 +127,7 @@ func ListNotes(c *cli.Context) error {
 	return formatters.OutputResult(result, format)
 }
 
-// DismissNote handles the "guck notes dismiss" command
+// DismissNote handles the "cerebro notes dismiss" command
 func DismissNote(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return fmt.Errorf("requires exactly 1 argument: note-id")

@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/tuist/guck/internal/git"
-	"github.com/tuist/guck/internal/state"
+	"github.com/Yeshwanthyk/cerebro/internal/git"
+	"github.com/Yeshwanthyk/cerebro/internal/state"
 )
 
 //go:embed static/index.html
@@ -190,7 +190,7 @@ func (s *AppState) diffHandler(w http.ResponseWriter, r *http.Request) {
 			detectedBranch := gitRepo.GetDefaultBranch()
 			http.Error(w, fmt.Sprintf(
 				"Base branch '%s' not found. This repository's default branch appears to be '%s'. "+
-					"Please configure guck with: guck config set base-branch %s",
+					"Please configure cerebro with: cerebro config set base-branch %s",
 				s.BaseBranch, detectedBranch, detectedBranch,
 			), http.StatusNotFound)
 			return
