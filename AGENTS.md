@@ -35,9 +35,9 @@ Guck is a Git diff review tool written in Go with a React-based web interface. I
 
 6. **MCP Integration** (`internal/mcp/`)
    - Model Context Protocol server for LLM integration
-   - Allows AI agents (like Claude) to query and resolve comments
+   - Allows AI agents to query and resolve comments
    - **5 MCP tools:** `list_comments`, `resolve_comment`, `add_note`, `list_notes`, `dismiss_note`
-   - Can be used via Claude Desktop or standalone `guck-mcp` CLI (generated via mcporter)
+   - Standalone CLI at `~/commands/guck-mcp` (generated via mcporter)
 
 7. **Frontend** (`static/index.html`, `internal/server/static/`)
    - Single-page React app (embedded via `//go:embed`)
@@ -69,43 +69,61 @@ go test ./...
 ./guck  # Opens browser
 ```
 
-### Regenerating guck-mcp CLI After MCP Changes
+### MCP Changes Checklist
 
-**When to regenerate:**
-- After modifying `internal/mcp/mcp.go` (tool implementations)
-- After modifying `internal/mcp/server.go` (tool schemas)
-- After adding/removing MCP tools
+When modifying MCP tools, follow these steps:
 
-**How to regenerate:**
+1. **Update both files** (schemas must stay in sync):
+   - `internal/mcp/mcp.go` - tool implementations and schema
+   - `internal/mcp/server.go` - tool schema in `handleToolsList()`
 
+2. **Rebuild guck binary:**
+   ```bash
+   cd /path/to/guck
+   go build -o guck .
+   cp guck ~/commands/guck
+   ```
+
+3. **Regenerate guck-mcp CLI:**
+   ```bash
+   npx mcporter generate-cli \
+     --command "~/commands/guck mcp" \
+     --name guck-mcp \
+     --compile ~/commands/guck-mcp
+   ```
+
+4. **Test the changes:**
+   ```bash
+   # Verify CLI works
+   guck-mcp --help
+   guck-mcp list-comments
+   
+   # Or test via mcporter directly
+   npx mcporter call --stdio "~/commands/guck mcp" 'list_comments()'
+   ```
+
+### Using guck-mcp Tools
+
+**Via the generated CLI:**
 ```bash
-# 1. Rebuild guck binary
-cd /path/to/guck
-go build -o ~/commands/guck .
-
-# 2. Regenerate the CLI
-cd ~/commands
-npx mcporter generate-cli \
-  --command "/Users/yesh/commands/guck mcp" \
-  --name guck-mcp \
-  --description "Guck code review MCP tools" \
-  --bundle dist/guck-mcp.js
-
-# 3. Update symlink (if needed)
-ln -sf ~/commands/dist/guck-mcp.js ~/commands/guck-mcp
-chmod +x ~/commands/guck-mcp
+guck-mcp list-comments --resolved false
+guck-mcp resolve-comment --comment-id "123-0"
+guck-mcp add-note --file-path "src/foo.ts" --text "Explanation" --author "claude" --branch "main" --commit "abc123"
 ```
 
-**Verify it works:**
+**Via mcporter (more reliable for optional args):**
 ```bash
-guck-mcp list-comments
-guck-mcp --help  # Should show all 5 tools
+# List unresolved comments
+npx mcporter call --stdio "~/commands/guck mcp" 'list_comments(resolved: false)'
+
+# Resolve a comment (resolved_by defaults to "agent")
+npx mcporter call --stdio "~/commands/guck mcp" 'resolve_comment(comment_id: "123-0")'
+
+# Add a note
+npx mcporter call --stdio "~/commands/guck mcp" 'add_note(file_path: "src/foo.ts", text: "Rationale here", author: "claude", branch: "main", commit: "abc123")'
 ```
 
-**Location:**
-- Executable: `~/commands/guck-mcp` → `~/commands/dist/guck-mcp.js`
-- Source template: `~/commands/guck-mcp.ts`
-- In PATH via: `~/commands/`
+**Note:** The generated CLI has a known issue with optional arguments - use `npx mcporter call --stdio` if you encounter "Missing required arguments" errors for fields that should be optional.
 
 ## Common Issues & Solutions
 
