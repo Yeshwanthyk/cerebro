@@ -325,6 +325,33 @@ func (m *Manager) GetAllNotes(repoPath string) []*Note {
 	return allNotes
 }
 
+// GetNotesForBranch returns all notes for a branch across all commits
+// Useful for working/staged modes where we want to see all relevant notes
+func (m *Manager) GetNotesForBranch(repoPath, branch string, filePath *string) []*Note {
+	var allNotes []*Note
+
+	if branches, ok := m.state.Repos[repoPath]; ok {
+		if commits, ok := branches[branch]; ok {
+			for _, repoState := range commits {
+				allNotes = append(allNotes, repoState.Notes...)
+			}
+		}
+	}
+
+	if filePath == nil {
+		return allNotes
+	}
+
+	// Filter by file path
+	filtered := []*Note{}
+	for _, note := range allNotes {
+		if note.FilePath == *filePath {
+			filtered = append(filtered, note)
+		}
+	}
+	return filtered
+}
+
 func (m *Manager) DismissNote(repoPath, branch, commit, noteID, dismissedBy string) error {
 	if branches, ok := m.state.Repos[repoPath]; ok {
 		if commits, ok := branches[branch]; ok {
