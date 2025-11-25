@@ -1,0 +1,1392 @@
+<!doctype html>
+<html
+    lang="en"
+    data-color-mode="auto"
+    data-light-theme="light"
+    data-dark-theme="dark"
+>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Guck - Git Diff Reviewer</title>
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/@primer/css@^21.0.0/dist/primer.css"
+        />
+        <script
+            crossorigin
+            src="https://unpkg.com/react@18/umd/react.production.min.js"
+        ></script>
+        <script
+            crossorigin
+            src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+        ></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+            id="hljs-light"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+            id="hljs-dark"
+        />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <style>
+            body {
+                min-height: 100vh;
+            }
+
+            /* Hide/show highlight.js themes based on color mode */
+            /* Default to light theme, hide dark */
+            #hljs-dark {
+                display: none;
+            }
+
+            /* When in dark mode, show dark and hide light */
+            [data-color-mode="dark"] #hljs-light {
+                display: none;
+            }
+
+            [data-color-mode="dark"] #hljs-dark {
+                display: block;
+            }
+
+            .file-diff-content {
+                font-family:
+                    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+                    "Liberation Mono", monospace;
+                font-size: 12px;
+                line-height: 20px;
+                overflow-x: auto;
+            }
+
+            .diff-line {
+                display: flex;
+                min-width: max-content;
+            }
+
+            .diff-line-number {
+                width: 40px;
+                padding: 0 10px;
+                text-align: right;
+                user-select: none;
+                color: var(--fgColor-muted);
+                flex-shrink: 0;
+            }
+
+            .diff-line-content {
+                flex: 1;
+                padding: 0 10px;
+                white-space: pre;
+            }
+
+            .diff-line.addition {
+                background-color: var(--bgColor-success-muted);
+            }
+
+            .diff-line.addition .diff-line-number {
+                background-color: var(--bgColor-success-muted);
+            }
+
+            .diff-line.deletion {
+                background-color: var(--bgColor-danger-muted);
+            }
+
+            .diff-line.deletion .diff-line-number {
+                background-color: var(--bgColor-danger-muted);
+            }
+
+            .diff-line.context {
+                background-color: transparent;
+            }
+
+            .file-header-container {
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .file-header-container:hover {
+                background-color: var(--bgColor-muted);
+            }
+
+            .counter-label {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .file-header-items {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+            }
+
+            .file-header-items > * {
+                padding-left: 8px !important;
+            }
+
+            .file-header-items > *:first-child {
+                padding-left: 0 !important;
+            }
+
+            .diff-line-wrapper {
+                position: relative;
+                display: flex;
+                min-width: max-content;
+            }
+
+            .diff-line-wrapper:hover .add-comment-btn {
+                opacity: 1;
+            }
+
+            .add-comment-btn {
+                position: relative;
+                opacity: 0;
+                transition: opacity 0.1s;
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                background-color: #0969da;
+                color: white;
+                flex-shrink: 0;
+                margin-right: 10px;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+                line-height: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            }
+
+            .add-comment-btn:hover {
+                background-color: #0860ca;
+            }
+
+            .comment-form {
+                background-color: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                margin: 8px 40px 8px 40px;
+                padding: 16px;
+            }
+
+            .comment-display {
+                background-color: #161b22;
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                margin: 8px 40px 8px 40px;
+                padding: 12px 16px;
+            }
+
+            [data-color-mode="light"] .comment-display {
+                color: white;
+            }
+
+            [data-color-mode="light"] .comment-form {
+                background-color: #ffffff;
+                border: 1px solid #d0d7de;
+            }
+
+            .comment-form textarea {
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+
+            /* Note display styling */
+            .note-display {
+                background: linear-gradient(
+                    135deg,
+                    #667eea22 0%,
+                    #764ba222 100%
+                );
+                border: 1px solid #667eea;
+                border-left: 4px solid #667eea;
+                border-radius: 6px;
+                margin: 8px 40px 8px 40px;
+                padding: 12px 16px;
+            }
+
+            [data-color-mode="light"] .note-display {
+                background: linear-gradient(
+                    135deg,
+                    #667eea11 0%,
+                    #764ba211 100%
+                );
+                border-color: #667eea;
+            }
+
+            .note-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+                gap: 8px;
+            }
+
+            .note-badges {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .note-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+            }
+
+            .note-badge.claude {
+                background-color: #667eea;
+                color: white;
+            }
+
+            .note-badge.copilot {
+                background-color: #24292f;
+                color: white;
+            }
+
+            .note-badge.explanation {
+                background-color: #0969da;
+                color: white;
+            }
+
+            .note-badge.rationale {
+                background-color: #8250df;
+                color: white;
+            }
+
+            .note-badge.suggestion {
+                background-color: #1a7f37;
+                color: white;
+            }
+
+            .note-content {
+                line-height: 1.5;
+            }
+
+            .notes-panel {
+                position: fixed;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: 400px;
+                background-color: var(--bgColor-default);
+                border-left: 1px solid var(--borderColor-default);
+                overflow-y: auto;
+                padding: 16px;
+                z-index: 100;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            }
+
+            .notes-panel.open {
+                transform: translateX(0);
+            }
+
+            .notes-panel-toggle {
+                position: fixed;
+                right: 16px;
+                bottom: 16px;
+                z-index: 99;
+            }
+
+            .note-item {
+                background: var(--bgColor-muted);
+                border: 1px solid var(--borderColor-default);
+                border-radius: 6px;
+                padding: 12px;
+                margin-bottom: 12px;
+                cursor: pointer;
+                transition: border-color 0.2s;
+            }
+
+            .note-item:hover {
+                border-color: #667eea;
+            }
+
+            .note-item.dismissed {
+                opacity: 0.5;
+            }
+
+            .filter-section {
+                margin-bottom: 16px;
+                padding-bottom: 16px;
+                border-bottom: 1px solid var(--borderColor-default);
+            }
+
+            .filter-row {
+                display: flex;
+                gap: 12px;
+                align-items: flex-end;
+            }
+
+            .filter-row > div {
+                flex: 1;
+            }
+
+            /* File box styling improvements */
+            .Box {
+                border-radius: 12px !important;
+                overflow: hidden;
+                margin-bottom: 16px !important;
+            }
+
+            .Box-header {
+                border-radius: 0 !important;
+            }
+
+            .Box-row:first-child {
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+            }
+
+            .Box-row:last-child {
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+
+        <script type="text/babel">
+            const { useState, useEffect } = React;
+
+            function App() {
+                const [status, setStatus] = useState(null);
+                const [diff, setDiff] = useState(null);
+                const [loading, setLoading] = useState(true);
+                const [error, setError] = useState(null);
+                const [expandedFiles, setExpandedFiles] = useState(new Set());
+                const [comments, setComments] = useState({});
+                const [commentText, setCommentText] = useState({});
+                const [activeCommentLine, setActiveCommentLine] =
+                    useState(null);
+                const [notes, setNotes] = useState([]);
+                const [notesPanelOpen, setNotesPanelOpen] = useState(false);
+                const [noteFilters, setNoteFilters] = useState({
+                    showDismissed: false,
+                    author: "all",
+                    type: "all",
+                });
+
+                // Theme management
+                const getInitialTheme = () => {
+                    const stored = localStorage.getItem("guck-theme");
+                    if (stored) return stored;
+                    return window.matchMedia("(prefers-color-scheme: dark)")
+                        .matches
+                        ? "dark"
+                        : "light";
+                };
+
+                const [theme, setTheme] = useState(getInitialTheme);
+
+                useEffect(() => {
+                    const html = document.documentElement;
+                    html.setAttribute("data-color-mode", theme);
+                    localStorage.setItem("guck-theme", theme);
+                }, [theme]);
+
+                const toggleTheme = () => {
+                    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+                };
+
+                useEffect(() => {
+                    loadData();
+                }, []);
+
+                function updateDocumentTitle(repoPath, remoteURL) {
+                    let title = "Guck";
+
+                    if (remoteURL) {
+                        // Try to extract account/repo from remote URL
+                        // Supports formats like:
+                        // - https://github.com/account/repo.git
+                        // - git@github.com:account/repo.git
+                        // - https://github.com/account/repo
+                        const match = remoteURL.match(
+                            /[:/]([^/]+\/[^/]+?)(\.git)?$/,
+                        );
+                        if (match) {
+                            title = match[1];
+                        } else {
+                            // Fallback to local repo name
+                            title = repoPath.split("/").pop();
+                        }
+                    } else {
+                        // No remote URL, use local repository name
+                        title = repoPath.split("/").pop();
+                    }
+
+                    document.title = title;
+                }
+
+                async function loadData() {
+                    try {
+                        setLoading(true);
+                        const [statusRes, diffRes, commentsRes, notesRes] =
+                            await Promise.all([
+                                fetch("/api/status"),
+                                fetch("/api/diff"),
+                                fetch("/api/comments"),
+                                fetch("/api/notes"),
+                            ]);
+
+                        if (
+                            !statusRes.ok ||
+                            !diffRes.ok ||
+                            !commentsRes.ok ||
+                            !notesRes.ok
+                        ) {
+                            throw new Error("Failed to load data");
+                        }
+
+                        const statusData = await statusRes.json();
+                        const diffData = await diffRes.json();
+                        const commentsData = await commentsRes.json();
+                        const notesData = await notesRes.json();
+
+                        setStatus(statusData);
+                        setDiff(diffData);
+                        setNotes(notesData || []);
+
+                        // Update document title with repository name
+                        updateDocumentTitle(
+                            diffData.repo_path,
+                            diffData.remote_url,
+                        );
+
+                        // Group comments by file_path
+                        const commentsByFile = {};
+                        commentsData.forEach((comment) => {
+                            if (!commentsByFile[comment.file_path]) {
+                                commentsByFile[comment.file_path] = [];
+                            }
+                            commentsByFile[comment.file_path].push(comment);
+                        });
+                        setComments(commentsByFile);
+
+                        setError(null);
+                    } catch (err) {
+                        setError(err.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                }
+
+                async function toggleViewed(filePath, currentlyViewed) {
+                    try {
+                        const endpoint = currentlyViewed
+                            ? "/api/unmark-viewed"
+                            : "/api/mark-viewed";
+                        const res = await fetch(endpoint, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({ file_path: filePath }),
+                        });
+
+                        if (!res.ok) {
+                            throw new Error("Failed to update viewed status");
+                        }
+
+                        setDiff((prev) => ({
+                            ...prev,
+                            files: prev.files.map((f) =>
+                                f.path === filePath
+                                    ? { ...f, viewed: !currentlyViewed }
+                                    : f,
+                            ),
+                        }));
+
+                        // Collapse the file when marking as viewed
+                        if (!currentlyViewed) {
+                            setExpandedFiles((prev) => {
+                                const next = new Set(prev);
+                                next.delete(filePath);
+                                return next;
+                            });
+                        }
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
+                async function addComment(filePath, lineNumber = null) {
+                    const key =
+                        lineNumber !== null
+                            ? `${filePath}:${lineNumber}`
+                            : filePath;
+                    const text = commentText[key];
+                    if (!text || !text.trim()) return;
+
+                    try {
+                        const res = await fetch("/api/comments", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                file_path: filePath,
+                                line_number: lineNumber,
+                                text: text.trim(),
+                            }),
+                        });
+
+                        if (!res.ok) {
+                            throw new Error("Failed to add comment");
+                        }
+
+                        const newComment = await res.json();
+
+                        setComments((prev) => ({
+                            ...prev,
+                            [filePath]: [...(prev[filePath] || []), newComment],
+                        }));
+
+                        setCommentText((prev) => ({
+                            ...prev,
+                            [key]: "",
+                        }));
+
+                        setActiveCommentLine(null);
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
+                async function resolveComment(commentId) {
+                    try {
+                        const res = await fetch("/api/comments/resolve", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                comment_id: commentId,
+                            }),
+                        });
+
+                        if (!res.ok) {
+                            throw new Error("Failed to resolve comment");
+                        }
+
+                        // Update local state to mark comment as resolved
+                        setComments((prev) => {
+                            const updated = {};
+                            for (const [
+                                filePath,
+                                fileComments,
+                            ] of Object.entries(prev)) {
+                                updated[filePath] = fileComments.map((c) =>
+                                    c.id === commentId
+                                        ? { ...c, resolved: true }
+                                        : c,
+                                );
+                            }
+                            return updated;
+                        });
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
+                async function dismissNote(noteId) {
+                    try {
+                        const res = await fetch("/api/notes/dismiss", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                note_id: noteId,
+                            }),
+                        });
+
+                        if (!res.ok) {
+                            throw new Error("Failed to dismiss note");
+                        }
+
+                        // Update local state to mark note as dismissed
+                        setNotes((prev) =>
+                            prev.map((n) =>
+                                n.id === noteId ? { ...n, dismissed: true } : n,
+                            ),
+                        );
+                    } catch (err) {
+                        setError(err.message);
+                    }
+                }
+
+                function toggleFile(filePath) {
+                    setExpandedFiles((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(filePath)) {
+                            next.delete(filePath);
+                        } else {
+                            next.add(filePath);
+                        }
+                        return next;
+                    });
+                }
+
+                function getLanguageFromPath(filePath) {
+                    const ext = filePath.split(".").pop().toLowerCase();
+                    const langMap = {
+                        js: "javascript",
+                        jsx: "javascript",
+                        ts: "typescript",
+                        tsx: "typescript",
+                        rs: "rust",
+                        py: "python",
+                        go: "go",
+                        json: "json",
+                        yaml: "yaml",
+                        yml: "yaml",
+                        md: "markdown",
+                        html: "xml",
+                        css: "css",
+                        sh: "bash",
+                        bash: "bash",
+                        rb: "ruby",
+                        java: "java",
+                        c: "c",
+                        cpp: "cpp",
+                        h: "c",
+                        hpp: "cpp",
+                    };
+                    return langMap[ext] || "plaintext";
+                }
+
+                function getFileNotes(filePath, lineNumber = null) {
+                    return notes.filter((note) => {
+                        if (note.file_path !== filePath) return false;
+                        if (
+                            lineNumber !== null &&
+                            note.line_number !== lineNumber
+                        )
+                            return false;
+                        if (
+                            lineNumber === null &&
+                            note.line_number !== null &&
+                            note.line_number !== undefined
+                        )
+                            return false;
+                        return true;
+                    });
+                }
+
+                function renderDiffLine(line, index, filePath, fileComments) {
+                    const prefix = line[0];
+                    const content = line.slice(1);
+
+                    let lineClass = "context";
+
+                    if (prefix === "+") {
+                        lineClass = "addition";
+                    } else if (prefix === "-") {
+                        lineClass = "deletion";
+                    }
+
+                    const lineNumber = index + 1;
+                    const lineComments = (fileComments || []).filter(
+                        (c) => c.line_number === lineNumber,
+                    );
+                    const lineNotes = getFileNotes(filePath, lineNumber).filter(
+                        (n) => !n.dismissed,
+                    );
+                    const commentKey = `${filePath}:${lineNumber}`;
+                    const isCommentActive = activeCommentLine === commentKey;
+
+                    // Apply syntax highlighting to all lines (context, additions, and deletions)
+                    let displayContent = content;
+                    if (window.hljs) {
+                        const language = getLanguageFromPath(filePath);
+                        try {
+                            const result = hljs.highlight(content, {
+                                language,
+                                ignoreIllegals: true,
+                            });
+                            displayContent = result.value;
+                        } catch (e) {
+                            // Fallback to plain text
+                            displayContent = content;
+                        }
+                    }
+
+                    return (
+                        <React.Fragment key={index}>
+                            <div className="diff-line-wrapper">
+                                <button
+                                    className="add-comment-btn"
+                                    onClick={() =>
+                                        setActiveCommentLine(
+                                            isCommentActive ? null : commentKey,
+                                        )
+                                    }
+                                    title="Add a comment to this line"
+                                >
+                                    +
+                                </button>
+                                <div className={`diff-line ${lineClass}`}>
+                                    <span className="diff-line-number">
+                                        {lineNumber}
+                                    </span>
+                                    <span
+                                        className="diff-line-content"
+                                        dangerouslySetInnerHTML={{
+                                            __html: displayContent,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            {lineNotes.map((note) => (
+                                <div key={note.id} className="note-display">
+                                    <div className="note-header">
+                                        <div className="note-badges">
+                                            <span
+                                                className={`note-badge ${note.author}`}
+                                            >
+                                                {note.author}
+                                            </span>
+                                            {note.type && (
+                                                <span
+                                                    className={`note-badge ${note.type}`}
+                                                >
+                                                    {note.type}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="d-flex gap-2">
+                                            <span className="text-small color-fg-muted">
+                                                {new Date(
+                                                    note.timestamp * 1000,
+                                                ).toLocaleString()}
+                                            </span>
+                                            <button
+                                                className="btn btn-sm"
+                                                onClick={() =>
+                                                    dismissNote(note.id)
+                                                }
+                                            >
+                                                Dismiss
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="note-content">
+                                        {note.text}
+                                    </div>
+                                    {note.metadata &&
+                                        Object.keys(note.metadata).length >
+                                            0 && (
+                                            <div className="text-small color-fg-muted mt-2">
+                                                {Object.entries(
+                                                    note.metadata,
+                                                ).map(([key, value]) => (
+                                                    <span
+                                                        key={key}
+                                                        className="mr-2"
+                                                    >
+                                                        {key}: {value}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                </div>
+                            ))}
+                            {lineComments
+                                .filter((c) => !c.resolved)
+                                .map((comment) => (
+                                    <div
+                                        key={comment.id}
+                                        className="comment-display"
+                                    >
+                                        <div className="d-flex flex-justify-between flex-items-center mb-1">
+                                            <div className="text-small color-fg-muted">
+                                                {new Date(
+                                                    comment.timestamp * 1000,
+                                                ).toLocaleString()}
+                                            </div>
+                                            <button
+                                                className="btn btn-sm"
+                                                onClick={() =>
+                                                    resolveComment(comment.id)
+                                                }
+                                            >
+                                                Resolve
+                                            </button>
+                                        </div>
+                                        <div>{comment.text}</div>
+                                    </div>
+                                ))}
+                            {isCommentActive && (
+                                <div className="comment-form">
+                                    <div className="text-bold mb-2">
+                                        Add a comment on line {lineNumber}
+                                    </div>
+                                    <textarea
+                                        className="form-control mb-2"
+                                        style={{ width: "100%" }}
+                                        placeholder="Leave a comment"
+                                        rows="3"
+                                        value={commentText[commentKey] || ""}
+                                        onChange={(e) =>
+                                            setCommentText((prev) => ({
+                                                ...prev,
+                                                [commentKey]: e.target.value,
+                                            }))
+                                        }
+                                        autoFocus
+                                    />
+                                    <div
+                                        className="d-flex"
+                                        style={{ gap: "8px" }}
+                                    >
+                                        <button
+                                            className="btn btn-sm"
+                                            onClick={() =>
+                                                setActiveCommentLine(null)
+                                            }
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            className="btn btn-primary btn-sm"
+                                            onClick={() =>
+                                                addComment(filePath, lineNumber)
+                                            }
+                                            disabled={
+                                                !commentText[commentKey]?.trim()
+                                            }
+                                        >
+                                            Comment
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </React.Fragment>
+                    );
+                }
+
+                function getStatusLabel(status) {
+                    const statusMap = {
+                        added: { label: "Added", color: "success" },
+                        modified: { label: "Modified", color: "attention" },
+                        deleted: { label: "Deleted", color: "danger" },
+                        renamed: { label: "Renamed", color: "accent" },
+                    };
+                    return (
+                        statusMap[status] || { label: status, color: "default" }
+                    );
+                }
+
+                if (loading) {
+                    return (
+                        <div className="container-lg p-4">
+                            <div className="Subhead">
+                                <h1 className="Subhead-heading">
+                                    Loading diff...
+                                </h1>
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (error) {
+                    return (
+                        <div className="container-lg p-4">
+                            <div className="flash flash-error">
+                                <strong>Error:</strong> {error}
+                            </div>
+                        </div>
+                    );
+                }
+
+                const viewedCount =
+                    diff?.files.filter((f) => f.viewed).length || 0;
+                const totalCount = diff?.files.length || 0;
+
+                // Filter notes based on current filters
+                const filteredNotes = notes.filter((note) => {
+                    if (!noteFilters.showDismissed && note.dismissed)
+                        return false;
+                    if (
+                        noteFilters.author !== "all" &&
+                        note.author !== noteFilters.author
+                    )
+                        return false;
+                    if (
+                        noteFilters.type !== "all" &&
+                        note.type !== noteFilters.type
+                    )
+                        return false;
+                    return true;
+                });
+
+                // Get unique authors and types for filters
+                const uniqueAuthors = [...new Set(notes.map((n) => n.author))];
+                const uniqueTypes = [
+                    ...new Set(notes.map((n) => n.type).filter(Boolean)),
+                ];
+
+                // Count total non-dismissed notes
+                const activeNotesCount = notes.filter(
+                    (n) => !n.dismissed,
+                ).length;
+
+                return (
+                    <div className="container-lg p-2">
+                        <div className="Subhead mb-5 d-flex flex-justify-between flex-items-center">
+                            <div>
+                                <div
+                                    className="Subhead-heading d-flex flex-items-center"
+                                    style={{ fontSize: "28px", gap: "12px" }}
+                                >
+                                    <a
+                                        href="https://github.com/tuist/guck"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="Link--primary text-bold"
+                                    >
+                                        Guck
+                                    </a>
+                                </div>
+                                <div className="Subhead-description mt-1">
+                                    <span className="Label Label--secondary mr-2">
+                                        Branch: {diff?.branch}
+                                    </span>
+                                    <span className="Label Label--secondary mr-2">
+                                        Commit: {diff?.commit.slice(0, 7)}
+                                    </span>
+                                    <span className="color-fg-muted text-small">
+                                        · A project by{" "}
+                                        <a
+                                            href="https://tuist.io"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="Link--primary"
+                                        >
+                                            Tuist
+                                        </a>
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                className="btn btn-sm btn-invisible"
+                                onClick={toggleTheme}
+                                title="Toggle theme"
+                                aria-label="Toggle theme"
+                            >
+                                {theme === "dark" ? (
+                                    <svg
+                                        className="octicon"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 16 16"
+                                        fill="currentColor"
+                                    >
+                                        <path d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-1.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.657-8.157a.75.75 0 0 1 0 1.061l-1.061 1.06a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.06-1.06a.75.75 0 0 1 1.06 0Zm-9.193 9.193a.75.75 0 0 1 0 1.06l-1.06 1.061a.75.75 0 1 1-1.061-1.06l1.06-1.061a.75.75 0 0 1 1.061 0ZM8 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 8 0ZM3 8a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 3 8Zm13 0a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 16 8Zm-8 5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 13Zm3.536-1.464a.75.75 0 0 1 1.06 0l1.061 1.06a.75.75 0 0 1-1.06 1.061l-1.061-1.06a.75.75 0 0 1 0-1.061ZM2.343 2.343a.75.75 0 0 1 1.061 0l1.06 1.061a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-1.06-1.06a.75.75 0 0 1 0-1.06Z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg
+                                        className="octicon"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 16 16"
+                                        fill="currentColor"
+                                    >
+                                        <path d="M9.598 1.591a.749.749 0 0 1 .785-.175 7.001 7.001 0 1 1-8.967 8.967.75.75 0 0 1 .961-.96 5.5 5.5 0 0 0 7.046-7.046.75.75 0 0 1 .175-.786Zm1.616 1.945a7 7 0 0 1-7.678 7.678 5.499 5.499 0 1 0 7.678-7.678Z"></path>
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+
+                        {diff && diff.files.length > 0 ? (
+                            <>
+                                <div className="Box mb-3">
+                                    <div
+                                        className="Box-row d-flex flex-justify-between flex-items-center"
+                                        style={{ fontSize: "14px" }}
+                                    >
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "8px",
+                                            }}
+                                        >
+                                            <span>
+                                                <strong>{totalCount}</strong>{" "}
+                                                file
+                                                {totalCount !== 1
+                                                    ? "s"
+                                                    : ""}{" "}
+                                                changed
+                                            </span>
+                                            <span className="counter-label">
+                                                <span className="Counter Counter--success">
+                                                    {viewedCount}
+                                                </span>
+                                                <span
+                                                    className="color-fg-muted"
+                                                    style={{
+                                                        marginLeft: "4px",
+                                                    }}
+                                                >
+                                                    reviewed
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="d-flex flex-column gap-4">
+                                    {diff.files.map((file) => {
+                                        const statusInfo = getStatusLabel(
+                                            file.status,
+                                        );
+                                        const isExpanded = expandedFiles.has(
+                                            file.path,
+                                        );
+
+                                        return (
+                                            <div
+                                                key={file.path}
+                                                className="Box"
+                                            >
+                                                <div
+                                                    className="Box-header file-header-container"
+                                                    onClick={() =>
+                                                        toggleFile(file.path)
+                                                    }
+                                                >
+                                                    <div
+                                                        className="d-flex flex-justify-between flex-items-center"
+                                                        style={{
+                                                            fontSize: "14px",
+                                                        }}
+                                                    >
+                                                        <div className="d-flex flex-items-center">
+                                                            <span className="text-mono text-bold mr-2">
+                                                                {file.path}
+                                                            </span>
+                                                            <span
+                                                                className={`Label Label--${statusInfo.color} mr-2`}
+                                                            >
+                                                                {
+                                                                    statusInfo.label
+                                                                }
+                                                            </span>
+                                                            <span className="color-fg-success mr-2">
+                                                                +
+                                                                {file.additions}
+                                                            </span>
+                                                            <span className="color-fg-danger">
+                                                                -
+                                                                {file.deletions}
+                                                            </span>
+                                                        </div>
+                                                        <div className="d-flex flex-items-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-checkbox mr-2"
+                                                                checked={
+                                                                    file.viewed
+                                                                }
+                                                                onChange={(
+                                                                    e,
+                                                                ) => {
+                                                                    e.stopPropagation();
+                                                                    toggleViewed(
+                                                                        file.path,
+                                                                        file.viewed,
+                                                                    );
+                                                                }}
+                                                                onClick={(e) =>
+                                                                    e.stopPropagation()
+                                                                }
+                                                            />
+                                                            <span className="color-fg-muted">
+                                                                Viewed
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {isExpanded && (
+                                                    <>
+                                                        <div className="Box-body p-0">
+                                                            <div className="file-diff-content">
+                                                                {file.patch
+                                                                    .split("\n")
+                                                                    .filter(
+                                                                        (
+                                                                            line,
+                                                                        ) => {
+                                                                            // Filter out Git diff metadata lines
+                                                                            return !(
+                                                                                line.startsWith(
+                                                                                    "diff --git",
+                                                                                ) ||
+                                                                                line.startsWith(
+                                                                                    "index ",
+                                                                                ) ||
+                                                                                line.startsWith(
+                                                                                    "--- ",
+                                                                                ) ||
+                                                                                line.startsWith(
+                                                                                    "+++ ",
+                                                                                ) ||
+                                                                                line.startsWith(
+                                                                                    "new file mode",
+                                                                                ) ||
+                                                                                line.startsWith(
+                                                                                    "old file mode",
+                                                                                ) ||
+                                                                                line.startsWith(
+                                                                                    "deleted file mode",
+                                                                                ) ||
+                                                                                line.startsWith(
+                                                                                    "@@",
+                                                                                )
+                                                                            );
+                                                                        },
+                                                                    )
+                                                                    .map(
+                                                                        (
+                                                                            line,
+                                                                            index,
+                                                                        ) =>
+                                                                            renderDiffLine(
+                                                                                line,
+                                                                                index,
+                                                                                file.path,
+                                                                                comments[
+                                                                                    file
+                                                                                        .path
+                                                                                ],
+                                                                            ),
+                                                                    )}
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="blankslate">
+                                <h3 className="blankslate-heading">
+                                    No changes
+                                </h3>
+                                <p>
+                                    There are no differences between your
+                                    current branch and main.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Notes Panel Toggle Button */}
+                        <button
+                            className="notes-panel-toggle btn btn-primary"
+                            onClick={() => setNotesPanelOpen(!notesPanelOpen)}
+                            title="Toggle AI Agent Notes"
+                        >
+                            <span className="mr-1">AI Notes</span>
+                            {activeNotesCount > 0 && (
+                                <span className="Counter Counter--primary">
+                                    {activeNotesCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Notes Panel */}
+                        <div
+                            className={`notes-panel ${notesPanelOpen ? "open" : ""}`}
+                        >
+                            <div className="d-flex flex-justify-between flex-items-center mb-3">
+                                <h2 className="h3">AI Agent Notes</h2>
+                                <button
+                                    className="btn btn-sm"
+                                    onClick={() => setNotesPanelOpen(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+
+                            {/* Filter Section */}
+                            <div className="filter-section">
+                                <div className="filter-row mb-2">
+                                    <div>
+                                        <label className="text-bold text-small d-block mb-1">
+                                            Author
+                                        </label>
+                                        <select
+                                            className="form-select"
+                                            value={noteFilters.author}
+                                            onChange={(e) =>
+                                                setNoteFilters((prev) => ({
+                                                    ...prev,
+                                                    author: e.target.value,
+                                                }))
+                                            }
+                                        >
+                                            <option value="all">
+                                                All Authors
+                                            </option>
+                                            {uniqueAuthors.map((author) => (
+                                                <option
+                                                    key={author}
+                                                    value={author}
+                                                >
+                                                    {author}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-bold text-small d-block mb-1">
+                                            Type
+                                        </label>
+                                        <select
+                                            className="form-select"
+                                            value={noteFilters.type}
+                                            onChange={(e) =>
+                                                setNoteFilters((prev) => ({
+                                                    ...prev,
+                                                    type: e.target.value,
+                                                }))
+                                            }
+                                        >
+                                            <option value="all">
+                                                All Types
+                                            </option>
+                                            {uniqueTypes.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="form-checkbox">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={noteFilters.showDismissed}
+                                            onChange={(e) =>
+                                                setNoteFilters((prev) => ({
+                                                    ...prev,
+                                                    showDismissed:
+                                                        e.target.checked,
+                                                }))
+                                            }
+                                        />
+                                        <span className="ml-1">
+                                            Show dismissed notes
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Notes List */}
+                            <div>
+                                <div className="text-bold text-small mb-2">
+                                    {filteredNotes.length} note
+                                    {filteredNotes.length !== 1 ? "s" : ""}
+                                </div>
+                                {filteredNotes.length === 0 ? (
+                                    <div className="blankslate">
+                                        <p className="text-small">
+                                            No notes found
+                                        </p>
+                                    </div>
+                                ) : (
+                                    filteredNotes.map((note) => (
+                                        <div
+                                            key={note.id}
+                                            className={`note-item ${note.dismissed ? "dismissed" : ""}`}
+                                            onClick={() => {
+                                                // Scroll to the note in the diff view
+                                                const filePath = note.file_path;
+                                                setExpandedFiles((prev) => {
+                                                    const next = new Set(prev);
+                                                    next.add(filePath);
+                                                    return next;
+                                                });
+                                                setNotesPanelOpen(false);
+                                            }}
+                                        >
+                                            <div className="note-badges mb-2">
+                                                <span
+                                                    className={`note-badge ${note.author}`}
+                                                >
+                                                    {note.author}
+                                                </span>
+                                                {note.type && (
+                                                    <span
+                                                        className={`note-badge ${note.type}`}
+                                                    >
+                                                        {note.type}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-small text-bold mb-1">
+                                                {note.file_path}
+                                                {note.line_number &&
+                                                    `:${note.line_number}`}
+                                            </div>
+                                            <div className="text-small color-fg-muted mb-1">
+                                                {note.text.substring(0, 100)}
+                                                {note.text.length > 100
+                                                    ? "..."
+                                                    : ""}
+                                            </div>
+                                            <div className="d-flex flex-justify-between flex-items-center">
+                                                <div className="text-small color-fg-muted">
+                                                    {new Date(
+                                                        note.timestamp * 1000,
+                                                    ).toLocaleString()}
+                                                </div>
+                                                {!note.dismissed && (
+                                                    <button
+                                                        className="btn btn-sm"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            dismissNote(
+                                                                note.id,
+                                                            );
+                                                        }}
+                                                    >
+                                                        Dismiss
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const root = ReactDOM.createRoot(document.getElementById("root"));
+            root.render(<App />);
+        </script>
+    </body>
+</html>
