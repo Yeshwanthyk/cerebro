@@ -1,9 +1,10 @@
 package server
 
 import (
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"strings"
 	"sync"
@@ -14,7 +15,10 @@ import (
 )
 
 //go:embed static/index.html
-var indexHTML string
+var legacyIndexHTML string
+
+//go:embed static/dist
+var distFS embed.FS
 
 type AppState struct {
 	RepoPath     string
@@ -35,12 +39,14 @@ type DiffResponse struct {
 }
 
 type FileDiff struct {
-	Path      string `json:"path"`
-	Status    string `json:"status"`
-	Additions int    `json:"additions"`
-	Deletions int    `json:"deletions"`
-	Patch     string `json:"patch"`
-	Viewed    bool   `json:"viewed"`
+	Path      string            `json:"path"`
+	Status    string            `json:"status"`
+	Additions int               `json:"additions"`
+	Deletions int               `json:"deletions"`
+	Patch     string            `json:"patch"`
+	Viewed    bool              `json:"viewed"`
+	OldFile   *git.FileContents `json:"old_file,omitempty"`
+	NewFile   *git.FileContents `json:"new_file,omitempty"`
 }
 
 type MarkViewedRequest struct {
@@ -113,7 +119,13 @@ func Start(port int, baseBranch string, mode string) error {
 	}
 
 	r := mux.NewRouter()
+	
+	// Serve static assets from Vite build
+	distSubFS, _ := fs.Sub(distFS, "static/dist")
+	staticHandler := http.FileServer(http.FS(distSubFS))
+	r.PathPrefix("/assets/").Handler(staticHandler)
 	r.HandleFunc("/", appState.indexHandler).Methods("GET")
+	
 	r.HandleFunc("/api/diff", appState.diffHandler).Methods("GET")
 	r.HandleFunc("/api/mark-viewed", appState.markViewedHandler).Methods("POST")
 	r.HandleFunc("/api/unmark-viewed", appState.unmarkViewedHandler).Methods("POST")
@@ -141,8 +153,16 @@ func Start(port int, baseBranch string, mode string) error {
 }
 
 func (s *AppState) indexHandler(w http.ResponseWriter, r *http.Request) {
+	// Serve index.html from Vite build
+	data, err := distFS.ReadFile("static/dist/index.html")
+	if err != nil {
+		// Fallback to legacy if dist not built
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(legacyIndexHTML))
+		return
+	}
 	w.Header().Set("Content-Type", "text/html")
-	_, _ = w.Write([]byte(indexHTML)) // Ignore write error for HTTP response
+	_, _ = w.Write(data)
 }
 
 func (s *AppState) diffHandler(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +202,7 @@ func (s *AppState) diffHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	files, err := gitRepo.GetDiff(mode, s.BaseBranch)
+	files, err := gitRepo.GetDiffWithContents(mode, s.BaseBranch)
 	if err != nil {
 		// Check if it's a "branch not found" error (only relevant for branch mode)
 		errMsg := err.Error()
@@ -218,6 +238,8 @@ func (s *AppState) diffHandler(w http.ResponseWriter, r *http.Request) {
 			Deletions: file.Deletions,
 			Patch:     file.Patch,
 			Viewed:    viewed,
+			OldFile:   file.OldFile,
+			NewFile:   file.NewFile,
 		})
 	}
 
