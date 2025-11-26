@@ -13,7 +13,7 @@ interface UseDiffResult {
 	setMode: (mode: DiffMode) => void;
 	refresh: () => Promise<void>;
 	toggleViewed: (filePath: string, viewed: boolean) => Promise<void>;
-	addComment: (filePath: string, lineNumber: number, text: string) => Promise<void>;
+	addComment: (filePath: string, lineNumber: number, text: string, lineContent?: string) => Promise<void>;
 	resolveComment: (commentId: string) => Promise<void>;
 	dismissNote: (noteId: string) => Promise<void>;
 	stageFile: (filePath: string) => Promise<void>;
@@ -105,11 +105,12 @@ export function useDiff(): UseDiffResult {
 		);
 	}, []);
 
-	const addComment = useCallback(async (filePath: string, lineNumber: number, text: string) => {
+	const addComment = useCallback(async (filePath: string, lineNumber: number, text: string, lineContent?: string) => {
+		const commentText = lineContent ? `[context: \`${lineContent}\`]\n${text}` : text;
 		const res = await fetch("/api/comments", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ file_path: filePath, line_number: lineNumber, text }),
+			body: JSON.stringify({ file_path: filePath, line_number: lineNumber, text: commentText }),
 		});
 		if (!res.ok) throw new Error("Failed to add comment");
 		const newComment = (await res.json()) as Comment;
