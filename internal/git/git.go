@@ -30,11 +30,18 @@ type Repo struct {
 }
 
 type FileInfo struct {
-	Path      string `json:"path"`
-	Status    string `json:"status"`
-	Additions int    `json:"additions"`
-	Deletions int    `json:"deletions"`
-	Patch     string `json:"patch"`
+	Path      string        `json:"path"`
+	Status    string        `json:"status"`
+	Additions int           `json:"additions"`
+	Deletions int           `json:"deletions"`
+	Patch     string        `json:"patch"`
+	OldFile   *FileContents `json:"old_file,omitempty"`
+	NewFile   *FileContents `json:"new_file,omitempty"`
+}
+
+type FileContents struct {
+	Name     string `json:"name"`
+	Contents string `json:"contents"`
 }
 
 func Open(path string) (*Repo, error) {
@@ -465,4 +472,151 @@ func (r *Repo) Commit(message string) error {
 	cmd := exec.Command("git", "commit", "-m", message)
 	cmd.Dir = r.path
 	return cmd.Run()
+}
+
+// GetFileAtHEAD returns file contents at HEAD commit
+func (r *Repo) GetFileAtHEAD(filePath string) (string, error) {
+	repoPath, err := r.RepoPath()
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("git", "show", "HEAD:"+filePath)
+	cmd.Dir = repoPath
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
+
+// GetFileAtRef returns file contents at a specific ref (branch, commit, etc)
+func (r *Repo) GetFileAtRef(ref, filePath string) (string, error) {
+	repoPath, err := r.RepoPath()
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("git", "show", ref+":"+filePath)
+	cmd.Dir = repoPath
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
+
+// GetFileFromIndex returns file contents from the staging area
+func (r *Repo) GetFileFromIndex(filePath string) (string, error) {
+	repoPath, err := r.RepoPath()
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("git", "show", ":"+filePath)
+	cmd.Dir = repoPath
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
+
+// GetWorkingFile returns file contents from the working directory
+func (r *Repo) GetWorkingFile(filePath string) (string, error) {
+	repoPath, err := r.RepoPath()
+	if err != nil {
+		return "", err
+	}
+	content, err := os.ReadFile(filepath.Join(repoPath, filePath))
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
+// maxFileSize is the threshold above which we skip embedding file contents (200KB)
+const maxFileSize = 200 * 1024
+
+// GetDiffWithContents returns diff with file contents for Precision Diffs
+func (r *Repo) GetDiffWithContents(mode DiffMode, baseBranch string) ([]FileInfo, error) {
+	files, err := r.GetDiff(mode, baseBranch)
+	if err != nil {
+		return nil, err
+	}
+
+	repoPath, err := r.RepoPath()
+	if err != nil {
+		return files, nil // Return without contents on error
+	}
+
+	for i := range files {
+		file := &files[i]
+		
+		// Skip large files
+		if len(file.Patch) > maxFileSize {
+			continue
+		}
+
+		switch mode {
+		case DiffModeWorking:
+			// Old = HEAD, New = working tree
+			if file.Status != "added" && file.Status != "untracked" {
+				if content, err := r.GetFileAtHEAD(file.Path); err == nil {
+					file.OldFile = &FileContents{Name: file.Path, Contents: content}
+				}
+			}
+			if file.Status != "deleted" {
+				if content, err := r.GetWorkingFile(file.Path); err == nil {
+					file.NewFile = &FileContents{Name: file.Path, Contents: content}
+				}
+			}
+
+		case DiffModeStaged:
+			// Old = HEAD, New = index (staged)
+			if file.Status != "added" {
+				if content, err := r.GetFileAtHEAD(file.Path); err == nil {
+					file.OldFile = &FileContents{Name: file.Path, Contents: content}
+				}
+			}
+			if file.Status != "deleted" {
+				if content, err := r.GetFileFromIndex(file.Path); err == nil {
+					file.NewFile = &FileContents{Name: file.Path, Contents: content}
+				}
+			}
+
+		case DiffModeBranch:
+			// Old = merge-base with baseBranch, New = HEAD
+			mergeBase := r.getMergeBase(baseBranch)
+			if file.Status != "added" && mergeBase != "" {
+				if content, err := r.GetFileAtRef(mergeBase, file.Path); err == nil {
+					file.OldFile = &FileContents{Name: file.Path, Contents: content}
+				}
+			}
+			if file.Status != "deleted" {
+				// For branch mode, new file is at HEAD
+				fullPath := filepath.Join(repoPath, file.Path)
+				if content, err := os.ReadFile(fullPath); err == nil {
+					file.NewFile = &FileContents{Name: file.Path, Contents: string(content)}
+				}
+			}
+		}
+	}
+
+	return files, nil
+}
+
+// getMergeBase returns the merge-base commit hash between HEAD and baseBranch
+func (r *Repo) getMergeBase(baseBranch string) string {
+	repoPath, err := r.RepoPath()
+	if err != nil {
+		return ""
+	}
+	// Try origin/baseBranch first, then baseBranch
+	for _, ref := range []string{"origin/" + baseBranch, baseBranch} {
+		cmd := exec.Command("git", "merge-base", ref, "HEAD")
+		cmd.Dir = repoPath
+		output, err := cmd.Output()
+		if err == nil {
+			return strings.TrimSpace(string(output))
+		}
+	}
+	return ""
 }
