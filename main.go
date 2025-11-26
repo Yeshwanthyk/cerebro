@@ -67,6 +67,11 @@ func main() {
 						Name:  "start",
 						Usage: "Start daemon for current repository",
 						Flags: []cli.Flag{
+							&cli.IntFlag{
+								Name:    "port",
+								Aliases: []string{"p"},
+								Usage:   "Port to run on (defaults to random available port)",
+							},
 							&cli.StringFlag{
 								Name:    "base",
 								Aliases: []string{"b"},
@@ -588,7 +593,7 @@ func startDaemon(c *cli.Context) error {
 	}
 	defer logFile.Close()
 
-	args := []string{"daemon", "start", "--mode", mode}
+	args := []string{"daemon", "start", "--mode", mode, "--port", fmt.Sprintf("%d", port)}
 	if baseBranch != "" {
 		args = append(args, "--base", baseBranch)
 	}
