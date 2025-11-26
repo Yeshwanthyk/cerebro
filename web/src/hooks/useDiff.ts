@@ -13,7 +13,12 @@ interface UseDiffResult {
 	setMode: (mode: DiffMode) => void;
 	refresh: () => Promise<void>;
 	toggleViewed: (filePath: string, viewed: boolean) => Promise<void>;
-	addComment: (filePath: string, lineNumber: number, text: string, lineContent?: string) => Promise<void>;
+	addComment: (
+		filePath: string,
+		lineNumber: number,
+		text: string,
+		lineContent?: string,
+	) => Promise<void>;
 	resolveComment: (commentId: string) => Promise<void>;
 	dismissNote: (noteId: string) => Promise<void>;
 	stageFile: (filePath: string) => Promise<void>;
@@ -75,12 +80,20 @@ export function useDiff(): UseDiffResult {
 				fetch(`/api/notes${modeParam}`).catch(() => ({ ok: false }) as Response),
 			])
 				.then(async ([commentsRes, notesRes]) => {
-					if (commentsRes.ok) setComments((await commentsRes.json()) as Comment[]);
-					if (notesRes.ok) setNotes((await notesRes.json()) as Note[]);
+					if (commentsRes.ok) {
+						setComments((await commentsRes.json()) as Comment[]);
+					}
+					if (notesRes.ok) {
+						setNotes((await notesRes.json()) as Note[]);
+					}
 				})
-				.catch(() => {/* ignore */});
+				.catch(() => {
+					/* ignore */
+				});
 		}, 3000);
-		return () => { clearInterval(interval); };
+		return () => {
+			clearInterval(interval);
+		};
 	}, [mode]);
 
 	const refresh = useCallback(() => fetchData(mode), [mode, fetchData]);
@@ -92,30 +105,37 @@ export function useDiff(): UseDiffResult {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ file_path: filePath }),
 		});
-		if (!res.ok) throw new Error("Failed to update");
+		if (!res.ok) {
+			throw new Error("Failed to update");
+		}
 		setDiff((prev) =>
 			prev
 				? {
 						...prev,
 						files: prev.files.map((f) =>
-							f.path === filePath ? { ...f, viewed: !currentlyViewed } : f
+							f.path === filePath ? { ...f, viewed: !currentlyViewed } : f,
 						),
 					}
-				: null
+				: null,
 		);
 	}, []);
 
-	const addComment = useCallback(async (filePath: string, lineNumber: number, text: string, lineContent?: string) => {
-		const commentText = lineContent ? `[context: \`${lineContent}\`]\n${text}` : text;
-		const res = await fetch("/api/comments", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ file_path: filePath, line_number: lineNumber, text: commentText }),
-		});
-		if (!res.ok) throw new Error("Failed to add comment");
-		const newComment = (await res.json()) as Comment;
-		setComments((prev) => [...prev, newComment]);
-	}, []);
+	const addComment = useCallback(
+		async (filePath: string, lineNumber: number, text: string, lineContent?: string) => {
+			const commentText = lineContent ? `[context: \`${lineContent}\`]\n${text}` : text;
+			const res = await fetch("/api/comments", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ file_path: filePath, line_number: lineNumber, text: commentText }),
+			});
+			if (!res.ok) {
+				throw new Error("Failed to add comment");
+			}
+			const newComment = (await res.json()) as Comment;
+			setComments((prev) => [...prev, newComment]);
+		},
+		[],
+	);
 
 	const resolveComment = useCallback(async (commentId: string) => {
 		const res = await fetch("/api/comments/resolve", {
@@ -123,10 +143,10 @@ export function useDiff(): UseDiffResult {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ comment_id: commentId }),
 		});
-		if (!res.ok) throw new Error("Failed to resolve");
-		setComments((prev) =>
-			prev.map((c) => (c.id === commentId ? { ...c, resolved: true } : c))
-		);
+		if (!res.ok) {
+			throw new Error("Failed to resolve");
+		}
+		setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, resolved: true } : c)));
 	}, []);
 
 	const dismissNote = useCallback(async (noteId: string) => {
@@ -139,45 +159,65 @@ export function useDiff(): UseDiffResult {
 		setNotes((prev) => prev.filter((n) => n.id !== noteId));
 	}, []);
 
-	const stageFile = useCallback(async (filePath: string) => {
-		const res = await fetch("/api/stage", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ file_path: filePath }),
-		});
-		if (!res.ok) throw new Error("Failed to stage");
-		await fetchData(mode);
-	}, [mode, fetchData]);
+	const stageFile = useCallback(
+		async (filePath: string) => {
+			const res = await fetch("/api/stage", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ file_path: filePath }),
+			});
+			if (!res.ok) {
+				throw new Error("Failed to stage");
+			}
+			await fetchData(mode);
+		},
+		[mode, fetchData],
+	);
 
-	const unstageFile = useCallback(async (filePath: string) => {
-		const res = await fetch("/api/unstage", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ file_path: filePath }),
-		});
-		if (!res.ok) throw new Error("Failed to unstage");
-		await fetchData(mode);
-	}, [mode, fetchData]);
+	const unstageFile = useCallback(
+		async (filePath: string) => {
+			const res = await fetch("/api/unstage", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ file_path: filePath }),
+			});
+			if (!res.ok) {
+				throw new Error("Failed to unstage");
+			}
+			await fetchData(mode);
+		},
+		[mode, fetchData],
+	);
 
-	const discardFile = useCallback(async (filePath: string) => {
-		const res = await fetch("/api/discard", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ file_path: filePath }),
-		});
-		if (!res.ok) throw new Error("Failed to discard");
-		await fetchData(mode);
-	}, [mode, fetchData]);
+	const discardFile = useCallback(
+		async (filePath: string) => {
+			const res = await fetch("/api/discard", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ file_path: filePath }),
+			});
+			if (!res.ok) {
+				throw new Error("Failed to discard");
+			}
+			await fetchData(mode);
+		},
+		[mode, fetchData],
+	);
 
-	const commit = useCallback(async (message: string) => {
-		const res = await fetch("/api/commit", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ message }),
-		});
-		if (!res.ok) throw new Error("Failed to commit");
-		await fetchData(mode);
-	}, [mode, fetchData]);
+	const commit = useCallback(
+		async (message: string) => {
+			const res = await fetch("/api/commit", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ message }),
+			});
+			if (!res.ok) {
+				throw new Error("Failed to commit");
+			}
+			await fetchData(mode);
+		},
+		[mode, fetchData],
+	);
 
 	return {
 		diff,
