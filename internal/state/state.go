@@ -355,7 +355,8 @@ func (m *Manager) GetNotesForBranch(repoPath, branch string, filePath *string) [
 func (m *Manager) DismissNote(repoPath, branch, commit, noteID, dismissedBy string) error {
 	if branches, ok := m.state.Repos[repoPath]; ok {
 		if commits, ok := branches[branch]; ok {
-			if repoState, ok := commits[commit]; ok {
+			// Search all commits in this branch to find the note
+			for _, repoState := range commits {
 				for _, note := range repoState.Notes {
 					if note.ID == noteID {
 						note.Dismissed = true
