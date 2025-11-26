@@ -26,7 +26,7 @@ export default function App() {
 	const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
 	const [focusedIndex, setFocusedIndex] = useState(0);
 	const [showNotes, setShowNotes] = useState(true);
-	const [diffStyle, setDiffStyle] = useState<"split" | "unified">("split");
+	const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
 	const [showShortcuts, setShowShortcuts] = useState(false);
 	const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
 	const [activeComment, setActiveComment] = useState<{
