@@ -48,8 +48,15 @@ Cerebro is a Git diff review tool written in Go with a React-based web interface
 
 ### Building
 
+**Always remove old binaries before rebuilding** to avoid macOS caching issues:
+
 ```bash
-go build -o cerebro .
+rm -f cerebro ~/commands/cerebro && go build -o cerebro . && cp cerebro ~/commands/cerebro
+```
+
+If cerebro gets "Killed: 9" on macOS, the old executable is stale/cached. Force rebuild:
+```bash
+rm -f ~/commands/cerebro && go build -o cerebro . && cp cerebro ~/commands/cerebro
 ```
 
 ### Testing
@@ -80,8 +87,7 @@ When modifying MCP tools, follow these steps:
 2. **Rebuild cerebro binary:**
    ```bash
    cd /path/to/cerebro
-   go build -o cerebro .
-   cp cerebro ~/commands/cerebro
+   rm -f cerebro ~/commands/cerebro && go build -o cerebro . && cp cerebro ~/commands/cerebro
    ```
 
 3. **Regenerate cerebro-mcp CLI:**
