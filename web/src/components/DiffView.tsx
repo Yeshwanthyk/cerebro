@@ -1,5 +1,5 @@
-import { MultiFileDiff } from "@pierre/precision-diffs/react";
 import type { DiffLineAnnotation } from "@pierre/precision-diffs/react";
+import { MultiFileDiff } from "@pierre/precision-diffs/react";
 import type { ReactNode } from "react";
 import type { Comment, FileDiff, Note } from "../api/types";
 
@@ -14,6 +14,7 @@ interface DiffViewProps {
 	comments: Comment[];
 	notes: Note[];
 	showNotes: boolean;
+	diffStyle: "split" | "unified";
 	onResolveComment: (id: string) => void;
 	onDismissNote: (id: string) => void;
 	onLineClick?: (lineNumber: number, content: string) => void;
@@ -24,6 +25,7 @@ export function DiffView({
 	comments,
 	notes,
 	showNotes,
+	diffStyle,
 	onResolveComment,
 	onDismissNote,
 	onLineClick,
@@ -53,9 +55,7 @@ export function DiffView({
 		}
 	}
 
-	const renderAnnotation = (
-		annotation: DiffLineAnnotation<AnnotationData>
-	): ReactNode => {
+	const renderAnnotation = (annotation: DiffLineAnnotation<AnnotationData>): ReactNode => {
 		const { metadata } = annotation;
 
 		if (metadata.type === "comment" && metadata.comment) {
@@ -70,7 +70,9 @@ export function DiffView({
 						<button
 							type="button"
 							className="annotation-action"
-							onClick={() => { onResolveComment(comment.id); }}
+							onClick={() => {
+								onResolveComment(comment.id);
+							}}
 						>
 							Resolve
 						</button>
@@ -91,7 +93,9 @@ export function DiffView({
 					<button
 						type="button"
 						className="annotation-dismiss"
-						onClick={() => { onDismissNote(note.id); }}
+						onClick={() => {
+							onDismissNote(note.id);
+						}}
 					>
 						dismiss
 					</button>
@@ -123,14 +127,16 @@ export function DiffView({
 			renderAnnotation={renderAnnotation}
 			options={{
 				theme: "pierre-dark",
-				diffStyle: "split",
+				diffStyle,
 				diffIndicators: "bars",
 				overflow: "wrap",
-				onLineClick: onLineClick ? (props) => {
-					const lines = (newFile.contents || "").split("\n");
-					const content = lines[props.lineNumber - 1]?.trim() || "";
-					onLineClick(props.lineNumber, content);
-				} : undefined,
+				onLineClick: onLineClick
+					? (props) => {
+							const lines = (newFile.contents || "").split("\n");
+							const content = lines[props.lineNumber - 1]?.trim() || "";
+							onLineClick(props.lineNumber, content);
+						}
+					: undefined,
 			}}
 		/>
 	);

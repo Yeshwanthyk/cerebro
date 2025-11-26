@@ -26,6 +26,7 @@ export default function App() {
 	const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
 	const [focusedIndex, setFocusedIndex] = useState(0);
 	const [showNotes, setShowNotes] = useState(true);
+	const [diffStyle, setDiffStyle] = useState<"split" | "unified">("split");
 	const [showShortcuts, setShowShortcuts] = useState(false);
 	const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
 	const [activeComment, setActiveComment] = useState<{
@@ -96,11 +97,9 @@ export default function App() {
 		};
 	}, [files, focusedIndex, toggleFile, setMode]);
 
-	const getCommentsForFile = (path: string) =>
-		(comments ?? []).filter((c) => c.file_path === path);
+	const getCommentsForFile = (path: string) => (comments ?? []).filter((c) => c.file_path === path);
 
-	const getNotesForFile = (path: string) =>
-		(notes ?? []).filter((n) => n.file_path === path);
+	const getNotesForFile = (path: string) => (notes ?? []).filter((n) => n.file_path === path);
 
 	const handleToggleViewed = async (path: string, viewed: boolean) => {
 		try {
@@ -153,7 +152,9 @@ export default function App() {
 
 	const handleCommit = async () => {
 		const message = window.prompt("Commit message:");
-		if (!message) return;
+		if (!message) {
+			return;
+		}
 		try {
 			await commit(message);
 		} catch {
@@ -162,13 +163,15 @@ export default function App() {
 	};
 
 	const handleAddComment = async (text: string) => {
-		if (!activeComment) return;
+		if (!activeComment) {
+			return;
+		}
 		try {
 			await addComment(
 				activeComment.filePath,
 				activeComment.lineNumber,
 				text,
-				activeComment.content
+				activeComment.content,
 			);
 			setActiveComment(null);
 		} catch {
@@ -223,14 +226,20 @@ export default function App() {
 						))}
 					</div>
 					{mode === "staged" && fileCount > 0 && (
-						<button
-							type="button"
-							className="commit-btn"
-							onClick={() => void handleCommit()}
-						>
+						<button type="button" className="commit-btn" onClick={() => void handleCommit()}>
 							Commit
 						</button>
 					)}
+					<button
+						type="button"
+						className={`view-toggle ${diffStyle === "split" ? "active" : ""}`}
+						onClick={() => {
+							setDiffStyle(diffStyle === "split" ? "unified" : "split");
+						}}
+						title="Toggle diff view"
+					>
+						{diffStyle === "split" ? "Split" : "Unified"}
+					</button>
 					<button
 						type="button"
 						className={`notes-toggle ${showNotes ? "active" : ""}`}
@@ -250,10 +259,7 @@ export default function App() {
 					</span>
 					<span className="shortcut-hint">Press ? for shortcuts</span>
 					<div className="progress-bar">
-						<div
-							className="progress-fill"
-							style={{ width: `${String(progressPercent)}%` }}
-						/>
+						<div className="progress-fill" style={{ width: `${String(progressPercent)}%` }} />
 					</div>
 				</div>
 			)}
@@ -272,6 +278,7 @@ export default function App() {
 							comments={getCommentsForFile(file.path)}
 							notes={getNotesForFile(file.path)}
 							showNotes={showNotes}
+							diffStyle={diffStyle}
 							isExpanded={expandedFiles.has(file.path)}
 							isFocused={index === focusedIndex}
 							mode={mode}
@@ -284,7 +291,9 @@ export default function App() {
 							onDismissNote={(id) => void handleDismissNote(id)}
 							onStage={() => void handleStage(file.path)}
 							onUnstage={() => void handleUnstage(file.path)}
-							onDiscard={() => { setConfirmDiscard(file.path); }}
+							onDiscard={() => {
+								setConfirmDiscard(file.path);
+							}}
 							onLineClick={(lineNumber, content) => {
 								setActiveComment({ filePath: file.path, lineNumber, content });
 							}}
@@ -294,30 +303,73 @@ export default function App() {
 			</main>
 
 			{showShortcuts && (
-				<div className="modal-overlay" onClick={() => { setShowShortcuts(false); }}>
-					<div className="shortcuts-modal" onClick={(e) => { e.stopPropagation(); }}>
+				<div
+					className="modal-overlay"
+					onClick={() => {
+						setShowShortcuts(false);
+					}}
+				>
+					<div
+						className="shortcuts-modal"
+						onClick={(e) => {
+							e.stopPropagation();
+						}}
+					>
 						<h3>Keyboard Shortcuts</h3>
 						<ul>
-							<li><kbd>j</kbd> Next file</li>
-							<li><kbd>k</kbd> Previous file</li>
-							<li><kbd>o</kbd> Toggle file</li>
-							<li><kbd>n</kbd> Toggle notes</li>
-							<li><kbd>1</kbd> Branch mode</li>
-							<li><kbd>2</kbd> Working mode</li>
-							<li><kbd>3</kbd> Staged mode</li>
-							<li><kbd>?</kbd> Show shortcuts</li>
+							<li>
+								<kbd>j</kbd> Next file
+							</li>
+							<li>
+								<kbd>k</kbd> Previous file
+							</li>
+							<li>
+								<kbd>o</kbd> Toggle file
+							</li>
+							<li>
+								<kbd>n</kbd> Toggle notes
+							</li>
+							<li>
+								<kbd>1</kbd> Branch mode
+							</li>
+							<li>
+								<kbd>2</kbd> Working mode
+							</li>
+							<li>
+								<kbd>3</kbd> Staged mode
+							</li>
+							<li>
+								<kbd>?</kbd> Show shortcuts
+							</li>
 						</ul>
 					</div>
 				</div>
 			)}
 
 			{confirmDiscard && (
-				<div className="modal-overlay" onClick={() => { setConfirmDiscard(null); }}>
-					<div className="confirm-modal" onClick={(e) => { e.stopPropagation(); }}>
-						<p>Discard changes to <strong>{confirmDiscard}</strong>?</p>
+				<div
+					className="modal-overlay"
+					onClick={() => {
+						setConfirmDiscard(null);
+					}}
+				>
+					<div
+						className="confirm-modal"
+						onClick={(e) => {
+							e.stopPropagation();
+						}}
+					>
+						<p>
+							Discard changes to <strong>{confirmDiscard}</strong>?
+						</p>
 						<p className="muted">This cannot be undone.</p>
 						<div className="modal-actions">
-							<button type="button" onClick={() => { setConfirmDiscard(null); }}>
+							<button
+								type="button"
+								onClick={() => {
+									setConfirmDiscard(null);
+								}}
+							>
 								Cancel
 							</button>
 							<button
@@ -333,32 +385,49 @@ export default function App() {
 			)}
 
 			{activeComment && (
-				<div className="modal-overlay" onClick={() => { setActiveComment(null); }}>
-					<div className="comment-modal" onClick={(e) => { e.stopPropagation(); }}>
+				<div
+					className="modal-overlay"
+					onClick={() => {
+						setActiveComment(null);
+					}}
+				>
+					<div
+						className="comment-modal"
+						onClick={(e) => {
+							e.stopPropagation();
+						}}
+					>
 						<h3>Comment on line {activeComment.lineNumber}</h3>
-						{activeComment.content && (
-							<pre className="code-preview">{activeComment.content}</pre>
-						)}
+						{activeComment.content && <pre className="code-preview">{activeComment.content}</pre>}
 						<textarea
-							autoFocus
 							placeholder="Write your comment..."
 							onKeyDown={(e) => {
 								if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
 									const text = e.currentTarget.value.trim();
-									if (text) void handleAddComment(text);
+									if (text) {
+										void handleAddComment(text);
+									}
 								}
 							}}
 						/>
 						<div className="modal-actions">
-							<button type="button" onClick={() => { setActiveComment(null); }}>
+							<button
+								type="button"
+								onClick={() => {
+									setActiveComment(null);
+								}}
+							>
 								Cancel
 							</button>
 							<button
 								type="button"
 								onClick={(e) => {
-									const textarea = e.currentTarget.parentElement?.parentElement?.querySelector("textarea");
+									const textarea =
+										e.currentTarget.parentElement?.parentElement?.querySelector("textarea");
 									const text = textarea?.value.trim();
-									if (text) void handleAddComment(text);
+									if (text) {
+										void handleAddComment(text);
+									}
 								}}
 							>
 								Comment

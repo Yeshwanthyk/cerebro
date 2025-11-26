@@ -6,6 +6,7 @@ interface FileCardProps {
 	comments: Comment[];
 	notes: Note[];
 	showNotes: boolean;
+	diffStyle: "split" | "unified";
 	isExpanded: boolean;
 	isFocused: boolean;
 	mode: "branch" | "working" | "staged";
@@ -32,6 +33,7 @@ export function FileCard({
 	comments,
 	notes,
 	showNotes,
+	diffStyle,
 	isExpanded,
 	isFocused,
 	mode,
@@ -64,9 +66,7 @@ export function FileCard({
 					{unresolvedComments > 0 && (
 						<span className="badge comments-badge">{unresolvedComments}</span>
 					)}
-					{activeNotes > 0 && (
-						<span className="badge notes-badge">{activeNotes}</span>
-					)}
+					{activeNotes > 0 && <span className="badge notes-badge">{activeNotes}</span>}
 				</button>
 
 				<div className="file-actions">
@@ -86,11 +86,7 @@ export function FileCard({
 						</button>
 					)}
 					<label className="reviewed-checkbox">
-						<input
-							type="checkbox"
-							checked={file.viewed}
-							onChange={onToggleViewed}
-						/>
+						<input type="checkbox" checked={file.viewed} onChange={onToggleViewed} />
 						<span>Reviewed</span>
 					</label>
 				</div>
@@ -103,6 +99,7 @@ export function FileCard({
 						comments={comments}
 						notes={notes}
 						showNotes={showNotes}
+						diffStyle={diffStyle}
 						onResolveComment={onResolveComment}
 						onDismissNote={onDismissNote}
 						onLineClick={onLineClick}
