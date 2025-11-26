@@ -16,6 +16,7 @@ interface DiffViewProps {
 	showNotes: boolean;
 	onResolveComment: (id: string) => void;
 	onDismissNote: (id: string) => void;
+	onLineClick?: (lineNumber: number, content: string) => void;
 }
 
 export function DiffView({
@@ -25,6 +26,7 @@ export function DiffView({
 	showNotes,
 	onResolveComment,
 	onDismissNote,
+	onLineClick,
 }: DiffViewProps) {
 	// Build annotations from comments and notes
 	const lineAnnotations: DiffLineAnnotation<AnnotationData>[] = [];
@@ -124,6 +126,11 @@ export function DiffView({
 				diffStyle: "split",
 				diffIndicators: "bars",
 				overflow: "wrap",
+				onLineClick: onLineClick ? (props) => {
+					const lines = (newFile.contents || "").split("\n");
+					const content = lines[props.lineNumber - 1]?.trim() || "";
+					onLineClick(props.lineNumber, content);
+				} : undefined,
 			}}
 		/>
 	);

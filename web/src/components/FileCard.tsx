@@ -16,6 +16,7 @@ interface FileCardProps {
 	onStage?: () => void;
 	onUnstage?: () => void;
 	onDiscard?: () => void;
+	onLineClick?: (lineNumber: number, content: string) => void;
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string }> = {
@@ -41,6 +42,7 @@ export function FileCard({
 	onStage,
 	onUnstage,
 	onDiscard,
+	onLineClick,
 }: FileCardProps) {
 	const status = STATUS_STYLES[file.status] ?? STATUS_STYLES.modified;
 	const unresolvedComments = comments.filter((c) => !c.resolved).length;
@@ -103,6 +105,7 @@ export function FileCard({
 						showNotes={showNotes}
 						onResolveComment={onResolveComment}
 						onDismissNote={onDismissNote}
+						onLineClick={onLineClick}
 					/>
 				</div>
 			)}
