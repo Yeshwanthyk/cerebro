@@ -113,6 +113,7 @@ body {
 }
 
 .notes-toggle,
+.view-toggle,
 .commit-btn {
   padding: 8px 12px;
   border: 1px solid var(--color-border);
@@ -123,7 +124,8 @@ body {
   cursor: pointer;
 }
 
-.notes-toggle.active {
+.notes-toggle.active,
+.view-toggle.active {
   background: var(--color-accent-soft);
   color: var(--color-accent);
   border-color: var(--color-accent);
@@ -500,7 +502,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 24px;
-  max-width: 500px;
+  max-width: 700px;
   width: 90%;
 }
 
