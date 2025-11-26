@@ -559,3 +559,50 @@ body {
   --pjs-font-size: 15px;
   --pjs-line-height: 24px;
 }
+
+/* File-level comments */
+.file-comments {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-comment {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+
+.file-comment .comment-text {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin-bottom: 8px;
+}
+
+.file-comment .comment-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.file-comment .resolve-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.file-comment .resolve-btn:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}

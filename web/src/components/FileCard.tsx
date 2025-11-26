@@ -49,6 +49,7 @@ export function FileCard({
 	const status = STATUS_STYLES[file.status] ?? STATUS_STYLES.modified;
 	const unresolvedComments = comments.filter((c) => !c.resolved).length;
 	const activeNotes = notes.filter((n) => !n.dismissed).length;
+	const fileLevelComments = comments.filter((c) => !c.resolved && c.line_number == null);
 
 	return (
 		<div className={`file-card ${isFocused ? "focused" : ""}`}>
@@ -93,18 +94,43 @@ export function FileCard({
 			</div>
 
 			{isExpanded && (
-				<div className="file-diff">
-					<DiffView
-						file={file}
-						comments={comments}
-						notes={notes}
-						showNotes={showNotes}
-						diffStyle={diffStyle}
-						onResolveComment={onResolveComment}
-						onDismissNote={onDismissNote}
-						onLineClick={onLineClick}
-					/>
-				</div>
+				<>
+					{fileLevelComments.length > 0 && (
+						<div className="file-comments">
+							{fileLevelComments.map((comment) => (
+								<div key={comment.id} className="file-comment">
+									<div className="comment-text">{comment.text}</div>
+									<div className="comment-footer">
+										<span className="comment-time">
+											{new Date(comment.timestamp * 1000).toLocaleString()}
+										</span>
+										<button
+											type="button"
+											className="resolve-btn"
+											onClick={() => {
+												onResolveComment(comment.id);
+											}}
+										>
+											Resolve
+										</button>
+									</div>
+								</div>
+							))}
+						</div>
+					)}
+					<div className="file-diff">
+						<DiffView
+							file={file}
+							comments={comments}
+							notes={notes}
+							showNotes={showNotes}
+							diffStyle={diffStyle}
+							onResolveComment={onResolveComment}
+							onDismissNote={onDismissNote}
+							onLineClick={onLineClick}
+						/>
+					</div>
+				</>
 			)}
 		</div>
 	);
