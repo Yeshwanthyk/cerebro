@@ -27,3 +27,4 @@ package-lock.json
 # Dev files
 thoughts/
 issues.md
+web/node_modules/
