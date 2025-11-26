@@ -195,7 +195,7 @@ export default function App() {
 	}
 
 	const viewedCount = files.filter((f) => f.viewed).length;
-	const totalNotes = (notes ?? []).filter((n) => !n.dismissed).length;
+	const totalNotes = notes?.length ?? 0; // Server already filters dismissed notes
 	const fileCount = files.length;
 	const progressPercent = fileCount > 0 ? (viewedCount / fileCount) * 100 : 0;
 

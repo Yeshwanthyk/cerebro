@@ -135,9 +135,8 @@ export function useDiff(): UseDiffResult {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ note_id: noteId }),
 		});
-		setNotes((prev) =>
-			prev.map((n) => (n.id === noteId ? { ...n, dismissed: true } : n))
-		);
+		// Remove dismissed note from local state since server filters it out
+		setNotes((prev) => prev.filter((n) => n.id !== noteId));
 	}, []);
 
 	const stageFile = useCallback(async (filePath: string) => {
