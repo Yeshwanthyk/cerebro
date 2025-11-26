@@ -16,3 +16,14 @@ Cargo.lock
 dist/
 guck
 cerebro
+*.bun-build
+
+# Dependencies
+node_modules/
+bun.lock
+pnpm-lock.yaml
+package-lock.json
+
+# Dev files
+thoughts/
+issues.md
