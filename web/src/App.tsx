@@ -14,6 +14,7 @@ export default function App() {
 		mode,
 		setMode,
 		toggleViewed,
+		addComment,
 		resolveComment,
 		dismissNote,
 		stageFile,
@@ -27,6 +28,11 @@ export default function App() {
 	const [showNotes, setShowNotes] = useState(true);
 	const [showShortcuts, setShowShortcuts] = useState(false);
 	const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
+	const [activeComment, setActiveComment] = useState<{
+		filePath: string;
+		lineNumber: number;
+		content: string;
+	} | null>(null);
 
 	const files = useMemo(() => diff?.files ?? [], [diff?.files]);
 
@@ -79,6 +85,7 @@ export default function App() {
 				case "Escape":
 					setShowShortcuts(false);
 					setConfirmDiscard(null);
+					setActiveComment(null);
 					break;
 			}
 		};
@@ -149,6 +156,21 @@ export default function App() {
 		if (!message) return;
 		try {
 			await commit(message);
+		} catch {
+			// ignore
+		}
+	};
+
+	const handleAddComment = async (text: string) => {
+		if (!activeComment) return;
+		try {
+			await addComment(
+				activeComment.filePath,
+				activeComment.lineNumber,
+				text,
+				activeComment.content
+			);
+			setActiveComment(null);
 		} catch {
 			// ignore
 		}
@@ -263,6 +285,9 @@ export default function App() {
 							onStage={() => void handleStage(file.path)}
 							onUnstage={() => void handleUnstage(file.path)}
 							onDiscard={() => { setConfirmDiscard(file.path); }}
+							onLineClick={(lineNumber, content) => {
+								setActiveComment({ filePath: file.path, lineNumber, content });
+							}}
 						/>
 					))
 				)}
@@ -301,6 +326,42 @@ export default function App() {
 								onClick={() => void handleDiscard(confirmDiscard)}
 							>
 								Discard
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{activeComment && (
+				<div className="modal-overlay" onClick={() => { setActiveComment(null); }}>
+					<div className="comment-modal" onClick={(e) => { e.stopPropagation(); }}>
+						<h3>Comment on line {activeComment.lineNumber}</h3>
+						{activeComment.content && (
+							<pre className="code-preview">{activeComment.content}</pre>
+						)}
+						<textarea
+							autoFocus
+							placeholder="Write your comment..."
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+									const text = e.currentTarget.value.trim();
+									if (text) void handleAddComment(text);
+								}
+							}}
+						/>
+						<div className="modal-actions">
+							<button type="button" onClick={() => { setActiveComment(null); }}>
+								Cancel
+							</button>
+							<button
+								type="button"
+								onClick={(e) => {
+									const textarea = e.currentTarget.parentElement?.parentElement?.querySelector("textarea");
+									const text = textarea?.value.trim();
+									if (text) void handleAddComment(text);
+								}}
+							>
+								Comment
 							</button>
 						</div>
 					</div>
