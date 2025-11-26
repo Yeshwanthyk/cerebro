@@ -518,8 +518,16 @@ func (s *AppState) getNotesHandler(w http.ResponseWriter, r *http.Request) {
 		notes = s.StateManager.GetNotes(s.RepoPath, currentBranch, currentCommit, filePathPtr)
 	}
 
+	// Filter out dismissed notes
+	var activeNotes []*state.Note
+	for _, note := range notes {
+		if !note.Dismissed {
+			activeNotes = append(activeNotes, note)
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(notes) // Ignore encode error for HTTP response
+	_ = json.NewEncoder(w).Encode(activeNotes) // Ignore encode error for HTTP response
 }
 
 func (s *AppState) addNoteHandler(w http.ResponseWriter, r *http.Request) {
