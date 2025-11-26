@@ -119,6 +119,26 @@ export function DiffView({
 	const oldFile = file.old_file ?? { name: file.path, contents: "" };
 	const newFile = file.new_file ?? { name: file.path, contents: "" };
 
+	const fontCSS = `
+		@font-face {
+			font-family: "Berkeley Mono";
+			src: url("/fonts/BerkeleyMonoNerdFont-Regular.otf") format("opentype");
+			font-weight: 400;
+			font-style: normal;
+		}
+		@font-face {
+			font-family: "Berkeley Mono";
+			src: url("/fonts/BerkeleyMonoNerdFont-Bold.otf") format("opentype");
+			font-weight: 700;
+			font-style: normal;
+		}
+		:host {
+			--pjs-font-family: "Berkeley Mono", monospace;
+			--pjs-font-size: 15px;
+			--pjs-line-height: 24px;
+		}
+	`;
+
 	return (
 		<MultiFileDiff
 			oldFile={oldFile}
@@ -130,6 +150,7 @@ export function DiffView({
 				diffStyle,
 				diffIndicators: "bars",
 				overflow: "wrap",
+				unsafeCSS: fontCSS,
 				onLineClick: onLineClick
 					? (props) => {
 							const lines = (newFile.contents || "").split("\n");
