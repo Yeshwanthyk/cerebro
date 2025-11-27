@@ -52,7 +52,7 @@ export function FileCard({
 	const fileLevelComments = comments.filter((c) => !c.resolved && c.line_number == null);
 
 	return (
-		<div className={`file-card ${isFocused ? "focused" : ""}`}>
+		<div className={`file-card ${isFocused ? "focused" : ""} ${file.staged ? "staged" : ""}`}>
 			<div className="file-header">
 				<button type="button" className="file-header-main" onClick={onToggle}>
 					<span className={`expand-icon ${isExpanded ? "expanded" : ""}`}>▶</span>
@@ -64,6 +64,11 @@ export function FileCard({
 						<span className="additions">+{file.additions}</span>
 						<span className="deletions">-{file.deletions}</span>
 					</span>
+					{file.staged && (
+						<span className="staged-indicator" title="File has staged changes">
+							✓
+						</span>
+					)}
 					{unresolvedComments > 0 && (
 						<span className="badge comments-badge">{unresolvedComments}</span>
 					)}
@@ -71,11 +76,18 @@ export function FileCard({
 				</button>
 
 				<div className="file-actions">
-					{mode === "working" && onStage && (
-						<button type="button" className="action-btn stage" onClick={onStage}>
-							Stage
-						</button>
-					)}
+					{mode === "working" &&
+						(file.staged
+							? onUnstage && (
+									<button type="button" className="action-btn unstage" onClick={onUnstage}>
+										Unstage
+									</button>
+								)
+							: onStage && (
+									<button type="button" className="action-btn stage" onClick={onStage}>
+										Stage
+									</button>
+								))}
 					{mode === "staged" && onUnstage && (
 						<button type="button" className="action-btn unstage" onClick={onUnstage}>
 							Unstage

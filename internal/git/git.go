@@ -6,10 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // DiffMode represents the type of diff to compute
@@ -25,8 +21,7 @@ const (
 )
 
 type Repo struct {
-	repo *git.Repository
-	path string
+	path string // Repository root path
 }
 
 type FileInfo struct {
@@ -44,79 +39,71 @@ type FileContents struct {
 	Contents string `json:"contents"`
 }
 
+// Open opens a git repository at the given path
 func Open(path string) (*Repo, error) {
-	repo, err := git.PlainOpenWithOptions(path, &git.PlainOpenOptions{
-		DetectDotGit: true,
-	})
+	// Find the repository root
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Dir = path
+	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to find git repository: %w", err)
 	}
 
-	return &Repo{repo: repo, path: path}, nil
+	repoPath := strings.TrimSpace(string(out))
+	return &Repo{path: repoPath}, nil
 }
 
+// CurrentBranch returns the current branch name
 func (r *Repo) CurrentBranch() (string, error) {
-	head, err := r.repo.Head()
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Dir = r.path
+	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD: %w", err)
+		return "", fmt.Errorf("failed to get current branch: %w", err)
 	}
-
-	if !head.Name().IsBranch() {
-		return "HEAD", nil
-	}
-
-	return head.Name().Short(), nil
+	return strings.TrimSpace(string(out)), nil
 }
 
+// CurrentCommit returns the current HEAD commit hash
 func (r *Repo) CurrentCommit() (string, error) {
-	head, err := r.repo.Head()
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = r.path
+	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD: %w", err)
+		return "", fmt.Errorf("failed to get current commit: %w", err)
 	}
-
-	return head.Hash().String(), nil
+	return strings.TrimSpace(string(out)), nil
 }
 
+// RepoPath returns the absolute path to the repository root
 func (r *Repo) RepoPath() (string, error) {
-	wt, err := r.repo.Worktree()
-	if err != nil {
-		return "", fmt.Errorf("failed to get worktree: %w", err)
-	}
-
-	absPath, err := filepath.Abs(wt.Filesystem.Root())
-	if err != nil {
-		return "", fmt.Errorf("failed to get absolute path: %w", err)
-	}
-
-	return absPath, nil
+	return filepath.Abs(r.path)
 }
 
 // GetRemoteURL returns the URL of the origin remote, or empty string if not found
 func (r *Repo) GetRemoteURL() (string, error) {
-	remote, err := r.repo.Remote("origin")
+	cmd := exec.Command("git", "remote", "get-url", "origin")
+	cmd.Dir = r.path
+	out, err := cmd.Output()
 	if err != nil {
-		// No origin remote, return empty string
+		// No origin remote
 		return "", nil
 	}
-
-	if len(remote.Config().URLs) == 0 {
-		return "", nil
-	}
-
-	return remote.Config().URLs[0], nil
+	return strings.TrimSpace(string(out)), nil
 }
 
 // GetDefaultBranch attempts to determine the repository's default branch
 // by checking origin/HEAD, then falling back to common branch names
 func (r *Repo) GetDefaultBranch() string {
-	// Try to get the default branch from origin/HEAD
-	// This works when origin/HEAD is a symbolic ref pointing to origin/<branch>
-	headRef, err := r.repo.Reference(plumbing.ReferenceName("refs/remotes/origin/HEAD"), false)
-	if err == nil && headRef.Type() == plumbing.SymbolicReference {
-		// Extract branch name from the target (e.g., refs/remotes/origin/master -> master)
-		target := headRef.Target().String()
-		if strings.HasPrefix(target, "refs/remotes/origin/") {
-			return strings.TrimPrefix(target, "refs/remotes/origin/")
+	// Try to get default branch from origin/HEAD
+	cmd := exec.Command("git", "symbolic-ref", "refs/remotes/origin/HEAD")
+	cmd.Dir = r.path
+	out, err := cmd.Output()
+	if err == nil {
+		ref := strings.TrimSpace(string(out))
+		// Extract branch name from refs/remotes/origin/<branch>
+		if strings.HasPrefix(ref, "refs/remotes/origin/") {
+			return strings.TrimPrefix(ref, "refs/remotes/origin/")
 		}
 	}
 
@@ -124,11 +111,15 @@ func (r *Repo) GetDefaultBranch() string {
 	commonBranches := []string{"main", "master", "develop", "development"}
 	for _, branch := range commonBranches {
 		// Check remote branch first
-		if _, err := r.repo.Reference(plumbing.NewRemoteReferenceName("origin", branch), true); err == nil {
+		cmd = exec.Command("git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/"+branch)
+		cmd.Dir = r.path
+		if cmd.Run() == nil {
 			return branch
 		}
 		// Check local branch
-		if _, err := r.repo.Reference(plumbing.NewBranchReferenceName(branch), true); err == nil {
+		cmd = exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
+		cmd.Dir = r.path
+		if cmd.Run() == nil {
 			return branch
 		}
 	}
@@ -137,142 +128,35 @@ func (r *Repo) GetDefaultBranch() string {
 	return "main"
 }
 
+// GetDiffFiles returns changed files between base branch and HEAD (branch mode)
 func (r *Repo) GetDiffFiles(baseBranch string) ([]FileInfo, error) {
-	// Try to get the remote tracking branch first (origin/baseBranch)
-	// This ensures we compare against the remote version even if local is outdated
-	remoteBranchRef, err := r.repo.Reference(plumbing.NewRemoteReferenceName("origin", baseBranch), true)
-
-	var baseCommit *object.Commit
-	if err == nil {
-		// Remote tracking branch exists, use it
-		baseCommit, err = r.repo.CommitObject(remoteBranchRef.Hash())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get remote base commit: %w", err)
-		}
-	} else {
-		// Fall back to local branch if remote tracking branch doesn't exist
-		baseBranchRef, err := r.repo.Reference(plumbing.NewBranchReferenceName(baseBranch), true)
-		if err != nil {
-			return nil, fmt.Errorf("failed to find branch %s: %w", baseBranch, err)
-		}
-
-		baseCommit, err = r.repo.CommitObject(baseBranchRef.Hash())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get base commit: %w", err)
-		}
+	// Find merge-base between base branch and HEAD
+	mergeBase := r.getMergeBase(baseBranch)
+	if mergeBase == "" {
+		return nil, fmt.Errorf("failed to find merge base with %s", baseBranch)
 	}
 
-	// Get the current HEAD commit
-	head, err := r.repo.Head()
+	// Get diff from merge-base to HEAD
+	cmd := exec.Command("git", "diff", mergeBase+"...HEAD", "--no-color")
+	cmd.Dir = r.path
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+		return nil, fmt.Errorf("failed to get diff: %w", err)
 	}
 
-	headCommit, err := r.repo.CommitObject(head.Hash())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get HEAD commit: %w", err)
-	}
-
-	// Find the merge base between base branch and HEAD
-	mergeBase, err := headCommit.MergeBase(baseCommit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find merge base: %w", err)
-	}
-
-	// Use the merge base as the comparison point
-	var baseTree *object.Tree
-	if len(mergeBase) > 0 {
-		baseTree, err = mergeBase[0].Tree()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get merge base tree: %w", err)
-		}
-	} else {
-		// Fallback to base branch if no merge base found
-		baseTree, err = baseCommit.Tree()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get base tree: %w", err)
-		}
-	}
-
-	headTree, err := headCommit.Tree()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get HEAD tree: %w", err)
-	}
-
-	// Get the diff
-	changes, err := baseTree.Diff(headTree)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create diff: %w", err)
-	}
-
-	files := []FileInfo{}
-
-	for _, change := range changes {
-		patch, err := change.Patch()
-		if err != nil {
-			continue
-		}
-
-		filePath := change.To.Name
-		if filePath == "" {
-			filePath = change.From.Name
-		}
-
-		status := "modified"
-		switch {
-		case change.From.Name == "":
-			status = "added"
-		case change.To.Name == "":
-			status = "deleted"
-		case change.From.Name != change.To.Name:
-			status = "renamed"
-		}
-
-		// Count additions and deletions from the patch string
-		additions := 0
-		deletions := 0
-		patchStr := patch.String()
-
-		lines := strings.Split(patchStr, "\n")
-		for _, line := range lines {
-			if len(line) == 0 {
-				continue
-			}
-			if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
-				additions++
-			} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
-				deletions++
-			}
-		}
-
-		files = append(files, FileInfo{
-			Path:      filePath,
-			Status:    status,
-			Additions: additions,
-			Deletions: deletions,
-			Patch:     patchStr,
-		})
-	}
-
-	return files, nil
+	return parseDiffOutput(string(out)), nil
 }
 
 // GetWorkingTreeDiff returns all uncommitted changes (staged + unstaged)
-// Uses git command for accurate working tree diffs since go-git has limitations
 func (r *Repo) GetWorkingTreeDiff() ([]FileInfo, error) {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return nil, err
-	}
-
 	// Get diff of working tree against HEAD
 	cmd := exec.Command("git", "diff", "HEAD", "--no-color")
-	cmd.Dir = repoPath
+	cmd.Dir = r.path
 	output, err := cmd.Output()
 	if err != nil {
 		// If HEAD doesn't exist (new repo), diff against empty tree
 		cmd = exec.Command("git", "diff", "--cached", "--no-color")
-		cmd.Dir = repoPath
+		cmd.Dir = r.path
 		output, err = cmd.Output()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get working tree diff: %w", err)
@@ -281,7 +165,7 @@ func (r *Repo) GetWorkingTreeDiff() ([]FileInfo, error) {
 
 	// Get list of untracked files
 	untrackedCmd := exec.Command("git", "ls-files", "--others", "--exclude-standard")
-	untrackedCmd.Dir = repoPath
+	untrackedCmd.Dir = r.path
 	untrackedOutput, _ := untrackedCmd.Output()
 
 	files := parseDiffOutput(string(output))
@@ -294,7 +178,7 @@ func (r *Repo) GetWorkingTreeDiff() ([]FileInfo, error) {
 				continue
 			}
 			// Read file content for the patch
-			content, err := os.ReadFile(filepath.Join(repoPath, filePath))
+			content, err := os.ReadFile(filepath.Join(r.path, filePath))
 			if err != nil {
 				continue
 			}
@@ -318,14 +202,8 @@ func (r *Repo) GetWorkingTreeDiff() ([]FileInfo, error) {
 
 // GetStagedDiff returns only staged changes (what would be committed)
 func (r *Repo) GetStagedDiff() ([]FileInfo, error) {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return nil, err
-	}
-
-	// Get diff of staged changes
 	cmd := exec.Command("git", "diff", "--cached", "--no-color")
-	cmd.Dir = repoPath
+	cmd.Dir = r.path
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get staged diff: %w", err)
@@ -336,31 +214,20 @@ func (r *Repo) GetStagedDiff() ([]FileInfo, error) {
 
 // HasUncommittedChanges checks if there are any uncommitted changes
 func (r *Repo) HasUncommittedChanges() bool {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return false
-	}
-
 	cmd := exec.Command("git", "status", "--porcelain")
-	cmd.Dir = repoPath
+	cmd.Dir = r.path
 	output, err := cmd.Output()
 	if err != nil {
 		return false
 	}
-
 	return len(strings.TrimSpace(string(output))) > 0
 }
 
 // HasStagedChanges checks if there are any staged changes
 func (r *Repo) HasStagedChanges() bool {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return false
-	}
-
 	cmd := exec.Command("git", "diff", "--cached", "--quiet")
-	cmd.Dir = repoPath
-	err = cmd.Run()
+	cmd.Dir = r.path
+	err := cmd.Run()
 	// Exit code 1 means there are changes
 	return err != nil
 }
@@ -476,12 +343,8 @@ func (r *Repo) Commit(message string) error {
 
 // GetFileAtHEAD returns file contents at HEAD commit
 func (r *Repo) GetFileAtHEAD(filePath string) (string, error) {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return "", err
-	}
 	cmd := exec.Command("git", "show", "HEAD:"+filePath)
-	cmd.Dir = repoPath
+	cmd.Dir = r.path
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -491,12 +354,8 @@ func (r *Repo) GetFileAtHEAD(filePath string) (string, error) {
 
 // GetFileAtRef returns file contents at a specific ref (branch, commit, etc)
 func (r *Repo) GetFileAtRef(ref, filePath string) (string, error) {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return "", err
-	}
 	cmd := exec.Command("git", "show", ref+":"+filePath)
-	cmd.Dir = repoPath
+	cmd.Dir = r.path
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -506,12 +365,8 @@ func (r *Repo) GetFileAtRef(ref, filePath string) (string, error) {
 
 // GetFileFromIndex returns file contents from the staging area
 func (r *Repo) GetFileFromIndex(filePath string) (string, error) {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return "", err
-	}
 	cmd := exec.Command("git", "show", ":"+filePath)
-	cmd.Dir = repoPath
+	cmd.Dir = r.path
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -521,11 +376,7 @@ func (r *Repo) GetFileFromIndex(filePath string) (string, error) {
 
 // GetWorkingFile returns file contents from the working directory
 func (r *Repo) GetWorkingFile(filePath string) (string, error) {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return "", err
-	}
-	content, err := os.ReadFile(filepath.Join(repoPath, filePath))
+	content, err := os.ReadFile(filepath.Join(r.path, filePath))
 	if err != nil {
 		return "", err
 	}
@@ -542,14 +393,9 @@ func (r *Repo) GetDiffWithContents(mode DiffMode, baseBranch string) ([]FileInfo
 		return nil, err
 	}
 
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return files, nil // Return without contents on error
-	}
-
 	for i := range files {
 		file := &files[i]
-		
+
 		// Skip large files
 		if len(file.Patch) > maxFileSize {
 			continue
@@ -591,10 +437,8 @@ func (r *Repo) GetDiffWithContents(mode DiffMode, baseBranch string) ([]FileInfo
 				}
 			}
 			if file.Status != "deleted" {
-				// For branch mode, new file is at HEAD
-				fullPath := filepath.Join(repoPath, file.Path)
-				if content, err := os.ReadFile(fullPath); err == nil {
-					file.NewFile = &FileContents{Name: file.Path, Contents: string(content)}
+				if content, err := r.GetWorkingFile(file.Path); err == nil {
+					file.NewFile = &FileContents{Name: file.Path, Contents: content}
 				}
 			}
 		}
@@ -605,14 +449,10 @@ func (r *Repo) GetDiffWithContents(mode DiffMode, baseBranch string) ([]FileInfo
 
 // getMergeBase returns the merge-base commit hash between HEAD and baseBranch
 func (r *Repo) getMergeBase(baseBranch string) string {
-	repoPath, err := r.RepoPath()
-	if err != nil {
-		return ""
-	}
 	// Try origin/baseBranch first, then baseBranch
 	for _, ref := range []string{"origin/" + baseBranch, baseBranch} {
 		cmd := exec.Command("git", "merge-base", ref, "HEAD")
-		cmd.Dir = repoPath
+		cmd.Dir = r.path
 		output, err := cmd.Output()
 		if err == nil {
 			return strings.TrimSpace(string(output))

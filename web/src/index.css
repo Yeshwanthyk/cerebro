@@ -196,9 +196,17 @@ body {
   overflow: hidden;
 }
 
+.file-card.staged {
+  border-left: 3px solid var(--color-added);
+}
+
 .file-card.focused {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.file-card.staged.focused {
+  border-left-color: var(--color-added);
 }
 
 .file-header {
@@ -295,6 +303,13 @@ body {
 .deletions {
   color: var(--color-deleted);
   margin-left: 6px;
+}
+
+.staged-indicator {
+  font-size: 12px;
+  color: var(--color-added);
+  font-weight: 600;
+  padding: 0 4px;
 }
 
 .badge {

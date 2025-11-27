@@ -14,9 +14,6 @@ import (
 	"github.com/Yeshwanthyk/cerebro/internal/state"
 )
 
-//go:embed static/index.html
-var legacyIndexHTML string
-
 //go:embed static/dist
 var distFS embed.FS
 
@@ -153,12 +150,9 @@ func Start(port int, baseBranch string, mode string) error {
 }
 
 func (s *AppState) indexHandler(w http.ResponseWriter, r *http.Request) {
-	// Serve index.html from Vite build
 	data, err := distFS.ReadFile("static/dist/index.html")
 	if err != nil {
-		// Fallback to legacy if dist not built
-		w.Header().Set("Content-Type", "text/html")
-		_, _ = w.Write([]byte(legacyIndexHTML))
+		http.Error(w, "Frontend not built. Run: cd web && bun run build", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html")
