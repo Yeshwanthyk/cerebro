@@ -38,17 +38,38 @@ export function useDiff(): UseDiffResult {
 	const fetchData = useCallback(async (currentMode: DiffMode) => {
 		try {
 			const modeParam = `?mode=${currentMode}`;
-			const [diffRes, commentsRes, notesRes] = await Promise.all([
+			const fetches: Promise<Response>[] = [
 				fetch(`/api/diff${modeParam}`),
 				fetch(`/api/comments${modeParam}`),
 				fetch(`/api/notes${modeParam}`).catch(() => ({ ok: false }) as Response),
-			]);
+			];
+
+			// In working mode, also fetch staged files to mark them
+			if (currentMode === "working") {
+				fetches.push(fetch("/api/diff?mode=staged").catch(() => ({ ok: false }) as Response));
+			}
+
+			const [diffRes, commentsRes, notesRes, stagedRes] = await Promise.all(fetches);
 
 			if (!diffRes.ok) {
 				throw new Error(await diffRes.text());
 			}
 
-			const diffData = (await diffRes.json()) as DiffResponse;
+			let diffData = (await diffRes.json()) as DiffResponse;
+
+			// Mark files that are also staged
+			if (currentMode === "working" && stagedRes?.ok) {
+				const stagedData = (await stagedRes.json()) as DiffResponse;
+				const stagedPaths = new Set(stagedData.files.map((f) => f.path));
+				diffData = {
+					...diffData,
+					files: diffData.files.map((f) => ({
+						...f,
+						staged: stagedPaths.has(f.path),
+					})),
+				};
+			}
+
 			setDiff(diffData);
 
 			if (commentsRes.ok) {

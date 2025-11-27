@@ -12,6 +12,7 @@ export interface FileDiff {
 	viewed: boolean;
 	old_file?: FileContents;
 	new_file?: FileContents;
+	staged?: boolean; // true if file has staged changes (for working mode)
 }
 
 export interface DiffResponse {
