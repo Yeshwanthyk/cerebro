@@ -1,36 +1,29 @@
 import type { DiffLineAnnotation } from "@pierre/precision-diffs/react";
 import { MultiFileDiff } from "@pierre/precision-diffs/react";
 import type { ReactNode } from "react";
-import type { Comment, FileDiff, Note } from "../api/types";
+import type { Comment, FileDiff } from "../api/types";
 
 interface AnnotationData {
-	type: "comment" | "note";
+	type: "comment";
 	comment?: Comment;
-	note?: Note;
 }
 
 interface DiffViewProps {
 	file: FileDiff;
 	comments: Comment[];
-	notes: Note[];
-	showNotes: boolean;
 	diffStyle: "split" | "unified";
 	onResolveComment: (id: string) => void;
-	onDismissNote: (id: string) => void;
 	onLineClick?: (lineNumber: number, content: string) => void;
 }
 
 export function DiffView({
 	file,
 	comments,
-	notes,
-	showNotes,
 	diffStyle,
 	onResolveComment,
-	onDismissNote,
 	onLineClick,
 }: DiffViewProps) {
-	// Build annotations from comments and notes
+	// Build annotations from comments
 	const lineAnnotations: DiffLineAnnotation<AnnotationData>[] = [];
 
 	// Add comments
@@ -40,17 +33,6 @@ export function DiffView({
 				side: "additions",
 				lineNumber: comment.line_number,
 				metadata: { type: "comment", comment },
-			});
-		}
-	}
-
-	// Add notes if visible
-	if (showNotes) {
-		for (const note of notes.filter((n) => !n.dismissed)) {
-			lineAnnotations.push({
-				side: "additions",
-				lineNumber: note.line_number,
-				metadata: { type: "note", note },
 			});
 		}
 	}
@@ -77,28 +59,6 @@ export function DiffView({
 							Resolve
 						</button>
 					</div>
-				</div>
-			);
-		}
-
-		if (metadata.type === "note" && metadata.note) {
-			const note = metadata.note;
-			return (
-				<div className={`annotation note-annotation note-${note.type}`}>
-					<div className="annotation-header">
-						<span className="note-author">{note.author}</span>
-						<span className="note-type">{note.type}</span>
-					</div>
-					<div className="annotation-content">{note.text}</div>
-					<button
-						type="button"
-						className="annotation-dismiss"
-						onClick={() => {
-							onDismissNote(note.id);
-						}}
-					>
-						dismiss
-					</button>
 				</div>
 			);
 		}
