@@ -12,5 +12,10 @@
     <true/>
     <key>com.apple.security.automation.apple-events</key>
     <true/>
+    <!-- Needed for Bun runtime: allow JIT/executable memory inside hardened runtime -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
 </dict>
 </plist>

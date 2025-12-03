@@ -3,6 +3,7 @@ import { relative, resolve } from "path";
 import { startServer, stopServer } from "../server";
 import * as state from "../state";
 import { getGitManager, isGitRepo, getRepoName } from "../git";
+import { fetchGithubCommentsForBranch, type GithubComment } from "../github";
 import type { Repository } from "../types";
 
 const VERSION = "0.1.0";
@@ -173,6 +174,7 @@ configCmd
 
     console.log("Configuration:\n");
     console.log(`  Default port: ${config.defaultPort}`);
+    console.log(`  GitHub token: ${config.githubToken ? "set" : "not set"}`);
     if (currentRepo) {
       console.log(`  Current repo: ${currentRepo.name} (${currentRepo.path})`);
       console.log(`  Base branch: ${currentRepo.baseBranch}`);
@@ -182,7 +184,7 @@ configCmd
 configCmd
   .command("set")
   .description("Set a configuration value")
-  .argument("<key>", "Configuration key (e.g., base-branch, port)")
+  .argument("<key>", "Configuration key (e.g., base-branch, port, github-token)")
   .argument("<value>", "Configuration value")
   .action(async (key: string, value: string) => {
     if (key === "base-branch") {
@@ -198,9 +200,14 @@ configCmd
       config.defaultPort = parseInt(value, 10);
       await state.saveConfig(config);
       console.log(`Set default port to: ${value}`);
+    } else if (key === "github-token") {
+      const config = await state.getConfig();
+      config.githubToken = value;
+      await state.saveConfig(config);
+      console.log(`GitHub token saved to config.`);
     } else {
       console.error(`Unknown config key: ${key}`);
-      console.log("Available keys: base-branch, port");
+      console.log("Available keys: base-branch, port, github-token");
       process.exit(1);
     }
   });
@@ -213,7 +220,9 @@ commentsCmd
   .description("List comments for a repository")
   .option("-r, --repo <idOrPath>", "Repository ID or path (defaults to current directory)")
   .option("-b, --branch <branch>", "Filter by branch")
-  .action(async (options: { repo?: string; branch?: string }) => {
+  .option("-g, --github", "Include GitHub PR comments for the branch")
+  .option("--github-token <token>", "GitHub token (defaults to GITHUB_TOKEN env)")
+  .action(async (options: { repo?: string; branch?: string; github?: boolean; githubToken?: string }) => {
     let repo: Repository;
     try {
       repo = await resolveRepo(options.repo);
@@ -223,25 +232,96 @@ commentsCmd
       return;
     }
 
+    const config = await state.getConfig();
+    const githubToken = options.githubToken || process.env.GITHUB_TOKEN || config.githubToken;
+
     const comments = await state.getComments(repo.id, options.branch);
+
+    let githubComments: GithubComment[] = [];
+    let githubMeta: { prNumber?: number; repo?: { owner: string; repo: string } } = {};
+
+    if (options.github) {
+      const git = getGitManager(repo.path);
+      const remoteUrl = await git.getRemoteUrl();
+      const branchForGithub = options.branch || (await git.getCurrentBranch());
+
+      try {
+        const gh = await fetchGithubCommentsForBranch({
+          remoteUrl,
+          branch: branchForGithub,
+          token: githubToken,
+        });
+        githubComments = gh.comments;
+        githubMeta = { prNumber: gh.prNumber, repo: gh.repo };
+      } catch (err) {
+        console.error(`Failed to fetch GitHub comments: ${(err as Error).message}`);
+      }
+    }
 
     if (comments.length === 0) {
       console.log("No comments found.");
+    } else {
+      console.log(`Comments for ${repo.name} (${repo.path}):\n`);
+
+      for (const comment of comments) {
+        const lineInfo = comment.line_number !== undefined ? `:${comment.line_number}` : "";
+        const location = `${relative(repo.path, comment.file_path) || comment.file_path}${lineInfo}`;
+        const metaParts = [comment.branch && `branch ${comment.branch}`, comment.commit && `commit ${comment.commit.slice(0, 7)}`, comment.resolved ? "resolved" : "open"]
+          .filter(Boolean)
+          .join(" | ");
+
+        console.log(`- [${comment.id}] ${location}${metaParts ? ` (${metaParts})` : ""}`);
+        console.log(`  ${comment.text}`);
+      }
+    }
+
+    if (options.github) {
+      const { repo: ghRepo, prNumber } = githubMeta;
+
+      if (!githubMeta.repo) {
+        console.log("\nGitHub: origin remote not detected or not on github.com.");
+      } else if (!prNumber) {
+        console.log(`\nGitHub: no pull request found for ${githubMeta.repo.owner}:${options.branch || "current branch"}.`);
+      } else if (githubComments.length === 0) {
+        console.log(`\nGitHub PR #${prNumber} (${ghRepo?.owner}/${ghRepo?.repo}): no comments.`);
+      } else {
+        console.log(`\nGitHub PR #${prNumber} (${ghRepo?.owner}/${ghRepo?.repo}):\n`);
+        for (const comment of githubComments) {
+          const location = comment.path ? `${comment.path}${comment.line ? `:${comment.line}` : ""}` : `PR #${prNumber}`;
+          const metaParts = [`@${comment.user}`, comment.type === "review" ? "review" : "issue", comment.created_at.slice(0, 10)].filter(Boolean).join(" | ");
+
+          console.log(`- [gh:${comment.id}] ${location}${metaParts ? ` (${metaParts})` : ""}`);
+          console.log(`  ${comment.body}`);
+        }
+      }
+    }
+  });
+
+commentsCmd
+  .command("resolve")
+  .description("Resolve a comment by ID")
+  .argument("<commentId>", "Comment ID to resolve")
+  .option("-r, --repo <idOrPath>", "Repository ID or path (defaults to current directory)")
+  .option("--by <name>", "Name to record as resolver (defaults to 'cli')")
+  .action(async (commentId: string, options: { repo?: string; by?: string }) => {
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
       return;
     }
 
-    console.log(`Comments for ${repo.name} (${repo.path}):\n`);
-
-    for (const comment of comments) {
-      const lineInfo = comment.line_number !== undefined ? `:${comment.line_number}` : "";
-      const location = `${relative(repo.path, comment.file_path) || comment.file_path}${lineInfo}`;
-      const metaParts = [comment.branch && `branch ${comment.branch}`, comment.commit && `commit ${comment.commit.slice(0, 7)}`, comment.resolved ? "resolved" : "open"]
-        .filter(Boolean)
-        .join(" | ");
-
-      console.log(`- ${location}${metaParts ? ` (${metaParts})` : ""}`);
-      console.log(`  ${comment.text}`);
+    const resolvedBy = options.by || "cli";
+    const success = await state.resolveComment(repo.id, commentId, resolvedBy);
+    if (!success) {
+      console.error(`Comment not found: ${commentId}`);
+      process.exit(1);
+      return;
     }
+
+    console.log(`Resolved comment ${commentId} in ${repo.name} as ${resolvedBy}.`);
   });
 
 // Version command with more detail
