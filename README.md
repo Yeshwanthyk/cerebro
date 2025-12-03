@@ -3,51 +3,55 @@
 [![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
-A Git diff review tool with a web interface, inspired by GitHub's pull request UI. Cerebro runs as a background daemon that automatically starts when you enter a git repository.
+A Git diff review tool with a web interface, inspired by GitHub's pull request UI. Cerebro provides a native macOS app for seamless code review workflows.
 
 ## Features
 
-- 🤖 **Auto-start daemon** - Automatically starts a server when you cd into a git repo
-- 🌐 **Web-based interface** - Review diffs in your browser with a GitHub-like UI
-- 📁 **File-by-file diff viewing** - Expand and review individual files
-- ✅ **Mark files as viewed** - Track your review progress
-- 💬 **Inline comments** - Add comments to specific lines of code
-- 💾 **Persistent state** - Remembers what you've reviewed using XDG conventions
-- 🎨 **GitHub-inspired dark theme** - Familiar and easy on the eyes
-- ⚡ **Built with Go** - Fast, simple, and efficient
-- 🔌 **Automatic port allocation** - Each repository gets its own port
-- 🤖 **MCP Server Integration** - Allows LLMs like Claude to query and resolve review comments
+- **Multi-repo support** - Switch between repositories with a dropdown picker
+- **Web-based interface** - Review diffs in your browser with a GitHub-like UI
+- **File-by-file diff viewing** - Expand and review individual files
+- **Mark files as viewed** - Track your review progress
+- **Inline comments** - Add comments to specific lines of code
+- **Persistent state** - Remembers what you've reviewed using XDG conventions
+- **GitHub-inspired dark theme** - Familiar and easy on the eyes
+- **Built with Bun** - Fast, modern, single-binary executable
+- **Native macOS app** - Menu bar app with global hotkey support
+- **MCP Server Integration** - Allows LLMs like Claude to query and resolve review comments
 
 ## Quick Start
 
-### Installation
+### macOS App
+
+Download `Cerebro.app` from the releases page and drag to Applications.
+
+The app lives in your menu bar and provides:
+- One-click access to the review UI
+- Global hotkey (Ctrl+Opt+Cmd+C) to open window
+- CLI installation for terminal usage
+
+### CLI Installation
+
+From the menu bar app, click "Install CLI Tool..." to add `cerebro` to your PATH.
+
+Or manually:
 
 ```bash
-# Using mise (recommended)
-mise use -g github:Yeshwanthyk/cerebro@latest
-
-# Or download from releases
-# https://github.com/Yeshwanthyk/cerebro/releases
-```
-
-### Setup
-
-Add to your shell configuration (`~/.bashrc`, `~/.zshrc`, etc.):
-
-```bash
-eval "$(cerebro init)"
+# The CLI is bundled in the app
+~/.local/bin/cerebro --help
 ```
 
 ### Usage
 
 ```bash
-cd /path/to/your/repo  # Daemon starts automatically
-cerebro                   # Opens browser to review diffs
+# Start server for a repository
+cerebro start /path/to/repo
+
+# Or use the app - it auto-manages the server
 ```
 
 ## MCP Integration
 
-### Option 1: Claude Desktop Integration
+### Claude Desktop Integration
 
 Add to your Claude Desktop configuration:
 
@@ -57,77 +61,69 @@ Add to your Claude Desktop configuration:
 {
   "mcpServers": {
     "cerebro": {
-      "command": "/path/to/cerebro",
+      "command": "~/.local/bin/cerebro",
       "args": ["mcp"]
     }
   }
 }
 ```
 
-Restart Claude Code, and you can ask Claude to:
+Restart Claude, and you can ask Claude to:
 - "List all unresolved comments in this repository"
 - "Show me comments on main.go"
 - "Resolve comment with ID xyz"
 
-### Option 2: Standalone CLI via mcporter
-
-Generate a standalone `cerebro-mcp` CLI for all MCP tools:
+## CLI Commands
 
 ```bash
-# Install mcporter
-npm install -g mcporter
+# Server management
+cerebro start [path]         # Start server for a repo (defaults to cwd)
+cerebro start -p 3030        # Start on specific port
 
-# Generate CLI (run from cerebro source directory)
-npx mcporter generate-cli \
-  --command "/path/to/cerebro mcp" \
-  --name cerebro-mcp \
-  --description "Cerebro code review MCP tools" \
-  --bundle dist/cerebro-mcp.js
-
-# Install to PATH
-chmod +x dist/cerebro-mcp.js
-ln -s $(pwd)/dist/cerebro-mcp.js ~/commands/cerebro-mcp
-```
-
-**Usage:**
-```bash
-cerebro-mcp list-comments --resolved false
-cerebro-mcp resolve-comment --comment-id "123-4" --resolved-by hsey
-cerebro-mcp add-note --branch main --commit HEAD --file-path main.go --text "..." --author hsey
-cerebro-mcp list-notes --dismissed false
-cerebro-mcp dismiss-note --note-id "456-7" --dismissed-by hsey
-```
-
-## Documentation
-
-For comprehensive documentation, see [docs/README.md](docs/README.md):
-
-- [Installation & Setup](docs/README.md#installation)
-- [Usage Guide](docs/README.md#usage)
-- [MCP Server Integration](docs/README.md#mcp-server-integration)
-- [Development](docs/README.md#development)
-- [Architecture](docs/README.md#architecture)
-- [Troubleshooting](docs/README.md#troubleshooting)
-
-## Common Commands
-
-```bash
-# Daemon management
-cerebro daemon start      # Start daemon manually
-cerebro daemon stop       # Stop current repo's daemon
-cerebro daemon list       # List all running daemons
-cerebro daemon stop-all   # Stop all daemons
+# Repository management
+cerebro repo add <path>      # Add a repository
+cerebro repo list            # List tracked repositories
+cerebro repo remove <id>     # Remove a repository
 
 # Configuration
 cerebro config set base-branch develop
 cerebro config show
+
+# MCP mode
+cerebro mcp                  # Start MCP server for AI integration
 ```
 
 ## How It Works
 
-1. **Shell Integration**: Automatically starts a server when you `cd` into a git repository
-2. **Daemon Management**: Each repository gets its own background server with a unique port
+1. **Repository Tracking**: Add repos via the UI or CLI
+2. **Server Management**: The macOS app manages the Bun server process
 3. **Web Interface**: Review diffs in your browser, mark files as viewed, add inline comments
-4. **State Persistence**: Everything is saved locally and associated with repo/branch/commit
-5. **MCP Integration**: LLMs like Claude can query and resolve comments through the MCP protocol
+4. **State Persistence**: Everything is saved locally in `~/.config/cerebro/`
+5. **MCP Integration**: LLMs like Claude can query and resolve comments
 
+## Development
+
+```bash
+# Install dependencies
+bun install
+
+# Run development server
+bun run dev
+
+# Build single binary
+bun run build
+
+# Build macOS app
+cd mac && ./scripts/build.sh
+```
+
+## Architecture
+
+- **Bun server** - HTTP API and static file serving
+- **React frontend** - GitHub-inspired diff viewer
+- **macOS wrapper** - SwiftUI menu bar app
+- **simple-git** - Git operations
+
+## License
+
+MIT

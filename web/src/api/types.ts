@@ -44,18 +44,16 @@ export interface Comment {
 	resolved_at?: number;
 }
 
-export interface Note {
+// Repository tracking
+export interface Repository {
 	id: string;
-	file_path: string;
-	line_number: number;
-	text: string;
-	timestamp: number;
-	branch: string;
-	commit: string;
-	author: string;
-	type: "explanation" | "rationale" | "suggestion";
-	metadata?: Record<string, string>;
-	dismissed: boolean;
-	dismissed_by?: string;
-	dismissed_at?: number;
+	path: string;
+	name: string;
+	baseBranch: string;
+	addedAt: number;
+}
+
+export interface ReposResponse {
+	repos: Repository[];
+	currentRepo?: string;
 }

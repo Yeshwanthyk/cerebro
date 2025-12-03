@@ -1,14 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileCard } from "./components/FileCard";
+import { RepoPicker } from "./components/RepoPicker";
 import { useDiff } from "./hooks/useDiff";
+import { useRepos } from "./hooks/useRepos";
 
 type DiffMode = "branch" | "working" | "staged";
 
 export default function App() {
 	const {
+		repos,
+		currentRepo,
+		loading: reposLoading,
+		error: reposError,
+		setCurrentRepo,
+		addRepo,
+		removeRepo,
+	} = useRepos();
+
+	const {
 		diff,
 		comments,
-		notes,
 		loading,
 		error,
 		mode,
@@ -16,16 +27,16 @@ export default function App() {
 		toggleViewed,
 		addComment,
 		resolveComment,
-		dismissNote,
 		stageFile,
 		unstageFile,
 		discardFile,
 		commit,
-	} = useDiff();
+		loadFileDiff,
+	} = useDiff(currentRepo);
 
 	const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+	const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
 	const [focusedIndex, setFocusedIndex] = useState(0);
-	const [showNotes, setShowNotes] = useState(true);
 	const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
 	const [showShortcuts, setShowShortcuts] = useState(false);
 	const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
@@ -37,17 +48,34 @@ export default function App() {
 
 	const files = useMemo(() => diff?.files ?? [], [diff?.files]);
 
-	const toggleFile = useCallback((path: string) => {
-		setExpandedFiles((prev) => {
-			const next = new Set(prev);
-			if (next.has(path)) {
-				next.delete(path);
-			} else {
-				next.add(path);
+	const toggleFile = useCallback(
+		async (path: string) => {
+			const file = files.find((f) => f.path === path);
+			const isExpanding = !expandedFiles.has(path);
+
+			// If expanding and file has no patch loaded (lazy loading), load it first
+			if (isExpanding && file && !file.patch) {
+				setLoadingFiles((prev) => new Set(prev).add(path));
+				await loadFileDiff(path);
+				setLoadingFiles((prev) => {
+					const next = new Set(prev);
+					next.delete(path);
+					return next;
+				});
 			}
-			return next;
-		});
-	}, []);
+
+			setExpandedFiles((prev) => {
+				const next = new Set(prev);
+				if (next.has(path)) {
+					next.delete(path);
+				} else {
+					next.add(path);
+				}
+				return next;
+			});
+		},
+		[expandedFiles, files, loadFileDiff],
+	);
 
 	// Keyboard shortcuts
 	useEffect(() => {
@@ -65,11 +93,8 @@ export default function App() {
 					break;
 				case "o":
 					if (files[focusedIndex]) {
-						toggleFile(files[focusedIndex].path);
+						void toggleFile(files[focusedIndex].path);
 					}
-					break;
-				case "n":
-					setShowNotes((s) => !s);
 					break;
 				case "1":
 					setMode("branch");
@@ -99,8 +124,6 @@ export default function App() {
 
 	const getCommentsForFile = (path: string) => (comments ?? []).filter((c) => c.file_path === path);
 
-	const getNotesForFile = (path: string) => (notes ?? []).filter((n) => n.file_path === path);
-
 	const handleToggleViewed = async (path: string, viewed: boolean) => {
 		try {
 			await toggleViewed(path, viewed);
@@ -112,14 +135,6 @@ export default function App() {
 	const handleResolveComment = async (id: string) => {
 		try {
 			await resolveComment(id);
-		} catch {
-			// ignore
-		}
-	};
-
-	const handleDismissNote = async (id: string) => {
-		try {
-			await dismissNote(id);
 		} catch {
 			// ignore
 		}
@@ -179,26 +194,67 @@ export default function App() {
 		}
 	};
 
-	if (loading) {
+	const handleRepoSelect = async (id: string) => {
+		try {
+			await setCurrentRepo(id);
+		} catch {
+			// ignore
+		}
+	};
+
+	const handleAddRepo = async (path: string) => {
+		await addRepo(path);
+	};
+
+	const handleRemoveRepo = async (id: string) => {
+		try {
+			await removeRepo(id);
+		} catch {
+			// ignore
+		}
+	};
+
+	// Show welcome screen if no repos or no current repo selected
+	if (!reposLoading && (repos.length === 0 || !currentRepo)) {
 		return (
-			<div className="loading">
+			<div className="welcome">
+				<img src="/images/Cerebro.png" alt="Cerebro" className="welcome-logo" />
 				<h1>Cerebro</h1>
-				<p>Loading diff...</p>
+				<p>Git diff review tool</p>
+				<div className="welcome-content">
+					<p>{repos.length === 0 ? "No repositories tracked yet." : "Select a repository to get started."}</p>
+					<p className="muted">{repos.length === 0 ? "Add a repository to get started:" : ""}</p>
+					<RepoPicker
+						repos={repos}
+						currentRepo={currentRepo}
+						onSelect={handleRepoSelect}
+						onAdd={handleAddRepo}
+						onRemove={handleRemoveRepo}
+					/>
+				</div>
 			</div>
 		);
 	}
 
-	if (error) {
+	if (reposLoading || loading) {
+		return (
+			<div className="loading">
+				<img src="/images/Cerebro.png" alt="Cerebro" className="loading-logo" />
+				<p><strong>Loading...</strong></p>
+			</div>
+		);
+	}
+
+	if (reposError || error) {
 		return (
 			<div className="error">
 				<h2>Error</h2>
-				<p>{error}</p>
+				<p>{reposError || error}</p>
 			</div>
 		);
 	}
 
 	const viewedCount = files.filter((f) => f.viewed).length;
-	const totalNotes = notes?.length ?? 0; // Server already filters dismissed notes
 	const fileCount = files.length;
 	const progressPercent = fileCount > 0 ? (viewedCount / fileCount) * 100 : 0;
 
@@ -206,7 +262,14 @@ export default function App() {
 		<div className="app">
 			<header className="header">
 				<div className="header-left">
-					<h1>Cerebro</h1>
+					<img src="/images/Cerebro.png" alt="Cerebro" className="header-logo" />
+					<RepoPicker
+						repos={repos}
+						currentRepo={currentRepo}
+						onSelect={handleRepoSelect}
+						onAdd={handleAddRepo}
+						onRemove={handleRemoveRepo}
+					/>
 					<span className="branch">{diff?.branch}</span>
 					<span className="commit">{diff?.commit.slice(0, 7)}</span>
 				</div>
@@ -240,15 +303,6 @@ export default function App() {
 					>
 						{diffStyle === "split" ? "Split" : "Unified"}
 					</button>
-					<button
-						type="button"
-						className={`notes-toggle ${showNotes ? "active" : ""}`}
-						onClick={() => {
-							setShowNotes(!showNotes);
-						}}
-					>
-						Notes {totalNotes > 0 && `(${String(totalNotes)})`}
-					</button>
 				</div>
 			</header>
 
@@ -276,19 +330,17 @@ export default function App() {
 							key={file.path}
 							file={file}
 							comments={getCommentsForFile(file.path)}
-							notes={getNotesForFile(file.path)}
-							showNotes={showNotes}
 							diffStyle={diffStyle}
 							isExpanded={expandedFiles.has(file.path)}
+							isLoading={loadingFiles.has(file.path)}
 							isFocused={index === focusedIndex}
 							mode={mode}
 							onToggle={() => {
-								toggleFile(file.path);
+								void toggleFile(file.path);
 								setFocusedIndex(index);
 							}}
 							onToggleViewed={() => void handleToggleViewed(file.path, file.viewed)}
 							onResolveComment={(id) => void handleResolveComment(id)}
-							onDismissNote={(id) => void handleDismissNote(id)}
 							onStage={() => void handleStage(file.path)}
 							onUnstage={() => void handleUnstage(file.path)}
 							onDiscard={() => {
@@ -325,9 +377,6 @@ export default function App() {
 							</li>
 							<li>
 								<kbd>o</kbd> Toggle file
-							</li>
-							<li>
-								<kbd>n</kbd> Toggle notes
 							</li>
 							<li>
 								<kbd>1</kbd> Branch mode

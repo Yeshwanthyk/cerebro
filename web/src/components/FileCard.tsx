@@ -1,19 +1,17 @@
-import type { Comment, FileDiff, Note } from "../api/types";
+import type { Comment, FileDiff } from "../api/types";
 import { DiffView } from "./DiffView";
 
 interface FileCardProps {
 	file: FileDiff;
 	comments: Comment[];
-	notes: Note[];
-	showNotes: boolean;
 	diffStyle: "split" | "unified";
 	isExpanded: boolean;
+	isLoading?: boolean;
 	isFocused: boolean;
 	mode: "branch" | "working" | "staged";
 	onToggle: () => void;
 	onToggleViewed: () => void;
 	onResolveComment: (id: string) => void;
-	onDismissNote: (id: string) => void;
 	onStage?: () => void;
 	onUnstage?: () => void;
 	onDiscard?: () => void;
@@ -31,16 +29,14 @@ const STATUS_STYLES: Record<string, { label: string; color: string }> = {
 export function FileCard({
 	file,
 	comments,
-	notes,
-	showNotes,
 	diffStyle,
 	isExpanded,
+	isLoading,
 	isFocused,
 	mode,
 	onToggle,
 	onToggleViewed,
 	onResolveComment,
-	onDismissNote,
 	onStage,
 	onUnstage,
 	onDiscard,
@@ -48,7 +44,6 @@ export function FileCard({
 }: FileCardProps) {
 	const status = STATUS_STYLES[file.status] ?? STATUS_STYLES.modified;
 	const unresolvedComments = comments.filter((c) => !c.resolved).length;
-	const activeNotes = notes.filter((n) => !n.dismissed).length;
 	const fileLevelComments = comments.filter((c) => !c.resolved && c.line_number == null);
 
 	return (
@@ -72,7 +67,6 @@ export function FileCard({
 					{unresolvedComments > 0 && (
 						<span className="badge comments-badge">{unresolvedComments}</span>
 					)}
-					{activeNotes > 0 && <span className="badge notes-badge">{activeNotes}</span>}
 				</button>
 
 				<div className="file-actions">
@@ -131,16 +125,17 @@ export function FileCard({
 						</div>
 					)}
 					<div className="file-diff">
-						<DiffView
-							file={file}
-							comments={comments}
-							notes={notes}
-							showNotes={showNotes}
-							diffStyle={diffStyle}
-							onResolveComment={onResolveComment}
-							onDismissNote={onDismissNote}
-							onLineClick={onLineClick}
-						/>
+						{isLoading ? (
+							<div className="diff-loading">Loading diff...</div>
+						) : (
+							<DiffView
+								file={file}
+								comments={comments}
+								diffStyle={diffStyle}
+								onResolveComment={onResolveComment}
+								onLineClick={onLineClick}
+							/>
+						)}
 					</div>
 				</>
 			)}
