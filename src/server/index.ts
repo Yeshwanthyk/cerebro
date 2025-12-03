@@ -521,7 +521,10 @@ function serveStatic(
   if (embedded) {
     const content = Buffer.from(embedded.content, "base64");
     return new Response(content, {
-      headers: { "Content-Type": embedded.mimeType },
+      headers: {
+        "Content-Type": embedded.mimeType,
+        "Cache-Control": "no-store, must-revalidate",
+      },
     });
   }
 
@@ -530,7 +533,10 @@ function serveStatic(
   if (indexAsset) {
     const content = Buffer.from(indexAsset.content, "base64");
     return new Response(content, {
-      headers: { "Content-Type": "text/html" },
+      headers: {
+        "Content-Type": "text/html",
+        "Cache-Control": "no-store, must-revalidate",
+      },
     });
   }
 

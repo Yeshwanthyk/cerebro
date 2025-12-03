@@ -32,7 +32,7 @@ public final class WebViewController: NSViewController, WKNavigationDelegate, WK
         let contentController = WKUserContentController()
         contentController.add(self, name: "cerebroBridge")
 
-        // Inject bridge script
+        // Inject bridge script + console/error forwarding
         let bridgeScript = """
         window.cerebroBridge = {
             postMessage: function(message) {
@@ -46,8 +46,32 @@ public final class WebViewController: NSViewController, WKNavigationDelegate, WK
             },
             showNotification: function(title, body) {
                 this.postMessage({type: 'notification', title: title, body: body});
+            },
+            log: function(level, message) {
+                this.postMessage({type: 'console', level: level, message: message});
             }
         };
+        (function() {
+            const send = (level, parts) => {
+                try {
+                    window.cerebroBridge.log(level, parts.map(String).join(' '));
+                } catch (_) {}
+            };
+            const wrap = (method) => {
+                const original = console[method];
+                console[method] = function(...args) {
+                    send(method, args);
+                    if (original) original.apply(console, args);
+                };
+            };
+            ['log', 'warn', 'error'].forEach(wrap);
+            window.addEventListener('error', (e) => {
+                send('error', [e.message, e.filename || '', e.lineno || '', e.error?.stack || '']);
+            });
+            window.addEventListener('unhandledrejection', (e) => {
+                send('error', ['unhandledrejection', e.reason?.stack || e.reason || '']);
+            });
+        })();
         """
         let userScript = WKUserScript(source: bridgeScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
         contentController.addUserScript(userScript)
@@ -225,6 +249,18 @@ public final class WebViewController: NSViewController, WKNavigationDelegate, WK
             if let title = body["title"] as? String,
                let notificationBody = body["body"] as? String {
                 showNotification(title: title, body: notificationBody)
+            }
+        case "console":
+            if let level = body["level"] as? String,
+               let message = body["message"] as? String {
+                switch level {
+                case "error":
+                    logger.error("JS: \(message)")
+                case "warn":
+                    logger.warning("JS: \(message)")
+                default:
+                    logger.info("JS: \(message)")
+                }
             }
         default:
             logger.warning("Unknown bridge message type: \(type)")

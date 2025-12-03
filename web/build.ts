@@ -20,21 +20,15 @@ if (existsSync(outdir)) {
 
 const start = performance.now();
 
-// Find all HTML entry points
-const entrypoints = [...new Bun.Glob("**/*.html").scanSync("src")]
-  .map((f) => path.resolve("src", f))
-  .filter((f) => !f.includes("node_modules"));
-
-console.log(`📄 Found ${entrypoints.length} HTML file(s) to process\n`);
-
 const result = await Bun.build({
-  entrypoints,
+  entrypoints: ["src/frontend.tsx"],
   outdir,
   minify: true,
   target: "browser",
   sourcemap: "linked",
   splitting: true,
   naming: {
+    entry: "app.[ext]",
     chunk: "[name]-[hash].[ext]",
     asset: "[name]-[hash].[ext]",
   },
@@ -88,3 +82,37 @@ if (existsSync(imagesDir)) {
 }
 
 console.log(`\n✅ Build completed in ${(end - start).toFixed(2)}ms\n`);
+
+// Generate index.html that points to emitted entry + css
+const jsEntry =
+  result.outputs.find((o) => o.path.endsWith("app.js")) ||
+  result.outputs.find((o) => o.kind === "entry" && o.path.endsWith(".js")) ||
+  result.outputs.find((o) => o.path.endsWith(".js"));
+const cssAsset = result.outputs.find((o) => o.path.endsWith(".css"));
+
+if (!jsEntry) {
+  console.error("❌ Could not find JS entry output");
+  process.exit(1);
+}
+
+const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#161616" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Cerebro" />
+    <title>Cerebro - Git Diff Review</title>
+    ${cssAsset ? `<link rel="stylesheet" href="./${path.basename(cssAsset.path)}" />` : ""}
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./${path.basename(jsEntry.path)}"></script>
+  </body>
+</html>
+`;
+
+await Bun.write(path.join(outdir, "index.html"), html);
+console.log("📝 Wrote dist/index.html");

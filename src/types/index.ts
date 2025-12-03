@@ -81,6 +81,7 @@ export interface Repository {
 export interface Config {
   defaultPort: number;
   currentRepo?: string;
+  githubToken?: string;
 }
 
 // Repos state file

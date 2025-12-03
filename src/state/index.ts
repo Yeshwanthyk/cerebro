@@ -22,7 +22,12 @@ export async function getConfig(): Promise<Config> {
   const file = Bun.file(CONFIG_FILE);
   if (await file.exists()) {
     try {
-      return await file.json();
+      const cfg = await file.json();
+      return {
+        defaultPort: cfg.defaultPort ?? 3030,
+        currentRepo: cfg.currentRepo,
+        githubToken: cfg.githubToken,
+      } satisfies Config;
     } catch {
       // Corrupted file, return defaults
     }
@@ -426,4 +431,3 @@ export async function dismissNote(repoId: string, noteId: string, dismissedBy: s
 
   return result.changes > 0;
 }
-
