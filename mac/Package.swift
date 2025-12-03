@@ -18,7 +18,7 @@ let package = Package(
             exclude: ["CerebroKit"],
             sources: ["CerebroApp.swift"],
             resources: [
-                .copy("../icon/Cerebro.icns")
+                .copy("Resources")
             ]
         ),
         .target(
