@@ -5,6 +5,8 @@ import type { DiffMode, Repository } from "../types";
 
 export interface ServerOptions {
   port: number;
+  // Optional embedded assets map (used by single-binary build)
+  assets?: Map<string, { content: string; mimeType: string }>;
 }
 
 type BunServer = Server<unknown>;
@@ -19,7 +21,11 @@ export async function startServer(options: ServerOptions): Promise<BunServer> {
   const { port } = options;
 
   // Embedded assets (populated during build)
-  const embeddedAssets: Map<string, { content: string; mimeType: string }> = new Map();
+  const embeddedAssets: Map<string, { content: string; mimeType: string }> =
+    options.assets ||
+    // Allow single-binary build to inject assets via globalThis
+    ((globalThis as any).__EMBEDDED_ASSETS__ as Map<string, { content: string; mimeType: string }>) ||
+    new Map();
 
   // CORS headers helper
   const corsHeaders = {
@@ -168,44 +174,86 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
 }
 
 // Helper to get current repo from query or state
+// Also validates that the repo path still exists
 async function getCurrentRepoFromRequest(url: URL): Promise<Repository | null> {
   const repoId = url.searchParams.get("repo");
+  let repo: Repository | undefined;
+
   if (repoId) {
-    const repo = await state.getRepo(repoId);
-    return repo || null;
+    repo = await state.getRepo(repoId);
+  } else {
+    repo = await state.getCurrentRepo();
   }
-  const current = await state.getCurrentRepo();
-  return current || null;
+
+  if (!repo) {
+    return null;
+  }
+
+  // Validate the repo path still exists and is a git repo
+  if (!(await isGitRepo(repo.path))) {
+    // The repo path no longer exists or isn't a git repo
+    // Clear it as current repo if it was
+    const reposState = await state.getReposState();
+    if (reposState.currentRepo === repo.id) {
+      await state.setCurrentRepo(null);
+    }
+    return null;
+  }
+
+  return repo;
 }
 
 // Repository handlers
 async function handleGetRepos(): Promise<Response> {
-  const repos = await state.getRepos();
+  const allRepos = await state.getRepos();
   const reposState = await state.getReposState();
+
+  // Filter out repos whose paths no longer exist
+  const validRepos = [];
+  for (const repo of allRepos) {
+    if (await isGitRepo(repo.path)) {
+      validRepos.push(repo);
+    } else {
+      // Auto-remove invalid repos from the database
+      await state.removeRepo(repo.id);
+    }
+  }
+
+  // Clear currentRepo if it was removed
+  let currentRepo: string | undefined = reposState.currentRepo;
+  if (currentRepo && !validRepos.some(r => r.id === currentRepo)) {
+    await state.setCurrentRepo(null);
+    currentRepo = undefined;
+  }
+
   return Response.json({
-    repos,
-    currentRepo: reposState.currentRepo,
+    repos: validRepos,
+    currentRepo,
   });
 }
 
 async function handleAddRepo(req: Request): Promise<Response> {
   const body = await req.json();
-  const { path } = body as { path: string };
+  const { path: inputPath } = body as { path: string };
 
-  if (!path) {
+  if (!inputPath) {
     return Response.json({ error: "Path is required" }, { status: 400 });
   }
 
+  // Resolve to absolute path
+  const { resolve } = await import("path");
+  const absolutePath = resolve(inputPath);
+
   // Validate it's a git repo
-  if (!(await isGitRepo(path))) {
+  if (!(await isGitRepo(absolutePath))) {
     return Response.json({ error: "Not a git repository" }, { status: 400 });
   }
 
-  const git = getGitManager(path);
+  const git = getGitManager(absolutePath);
   const baseBranch = await git.getDefaultBranch();
-  const name = getRepoName(path);
+  const name = getRepoName(absolutePath);
 
-  const repo = await state.addRepo(path, name, baseBranch);
+  const repo = await state.addRepo(absolutePath, name, baseBranch);
   return Response.json(repo);
 }
 

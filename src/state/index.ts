@@ -163,8 +163,13 @@ export async function removeRepo(id: string): Promise<boolean> {
   return true;
 }
 
-export async function setCurrentRepo(id: string): Promise<boolean> {
+export async function setCurrentRepo(id: string | null): Promise<boolean> {
   const db = getDb();
+
+  if (id === null) {
+    db.query("DELETE FROM config WHERE key = 'currentRepo'").run();
+    return true;
+  }
 
   const repo = await getRepo(id);
   if (!repo) {

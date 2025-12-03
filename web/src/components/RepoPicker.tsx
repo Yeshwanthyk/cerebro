@@ -47,7 +47,11 @@ export function RepoPicker({ repos, currentRepo, onSelect, onAdd, onRemove: _onR
 				}}
 				className="repo-select"
 			>
-				{repos.length === 0 && <option value="">No repositories</option>}
+				{!currentRepo && (
+					<option value="" disabled>
+						{repos.length === 0 ? "No repositories" : "Select a repository..."}
+					</option>
+				)}
 				{repos.map((repo) => (
 					<option key={repo.id} value={repo.id}>
 						{repo.name}

@@ -139,30 +139,75 @@ async function routeApi(req: Request, url: URL, path: string, method: string): P
 }
 
 // Helper to get current repo
+// Also validates that the repo path still exists
 async function getCurrentRepoFromRequest(url: URL): Promise<Repository | null> {
   const repoId = url.searchParams.get("repo");
+  let repo: Repository | undefined;
+
   if (repoId) {
-    return (await state.getRepo(repoId)) || null;
+    repo = await state.getRepo(repoId);
+  } else {
+    repo = await state.getCurrentRepo();
   }
-  return (await state.getCurrentRepo()) || null;
+
+  if (!repo) {
+    return null;
+  }
+
+  // Validate the repo path still exists and is a git repo
+  if (!(await isGitRepo(repo.path))) {
+    // The repo path no longer exists or isn't a git repo
+    // Clear it as current repo if it was
+    const reposState = await state.getReposState();
+    if (reposState.currentRepo === repo.id) {
+      await state.setCurrentRepo(null);
+    }
+    return null;
+  }
+
+  return repo;
 }
 
 // API Handlers
 async function handleGetRepos(): Promise<Response> {
-  const repos = await state.getRepos();
+  const allRepos = await state.getRepos();
   const reposState = await state.getReposState();
-  return Response.json({ repos, currentRepo: reposState.currentRepo });
+
+  // Filter out repos whose paths no longer exist
+  const validRepos = [];
+  for (const repo of allRepos) {
+    if (await isGitRepo(repo.path)) {
+      validRepos.push(repo);
+    } else {
+      // Auto-remove invalid repos from the database
+      await state.removeRepo(repo.id);
+    }
+  }
+
+  // Clear currentRepo if it was removed
+  let currentRepo: string | undefined = reposState.currentRepo;
+  if (currentRepo && !validRepos.some(r => r.id === currentRepo)) {
+    await state.setCurrentRepo(null);
+    currentRepo = undefined;
+  }
+
+  return Response.json({ repos: validRepos, currentRepo });
 }
 
 async function handleAddRepo(req: Request): Promise<Response> {
-  const { path } = (await req.json()) as { path: string };
-  if (!path) return Response.json({ error: "Path is required" }, { status: 400 });
-  if (!(await isGitRepo(path))) return Response.json({ error: "Not a git repository" }, { status: 400 });
+  const { path: inputPath } = (await req.json()) as { path: string };
+  if (!inputPath) return Response.json({ error: "Path is required" }, { status: 400 });
 
-  const git = getGitManager(path);
+  // Resolve to absolute path
+  const { resolve } = await import("path");
+  const absolutePath = resolve(inputPath);
+
+  if (!(await isGitRepo(absolutePath))) return Response.json({ error: "Not a git repository" }, { status: 400 });
+
+  const git = getGitManager(absolutePath);
   const baseBranch = await git.getDefaultBranch();
-  const name = getRepoName(path);
-  const repo = await state.addRepo(path, name, baseBranch);
+  const name = getRepoName(absolutePath);
+  const repo = await state.addRepo(absolutePath, name, baseBranch);
   return Response.json(repo);
 }
 

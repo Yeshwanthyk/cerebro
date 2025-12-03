@@ -214,16 +214,16 @@ export default function App() {
 		}
 	};
 
-	// Show welcome screen if no repos
-	if (!reposLoading && repos.length === 0) {
+	// Show welcome screen if no repos or no current repo selected
+	if (!reposLoading && (repos.length === 0 || !currentRepo)) {
 		return (
 			<div className="welcome">
 				<img src="/images/Cerebro.png" alt="Cerebro" className="welcome-logo" />
 				<h1>Cerebro</h1>
 				<p>Git diff review tool</p>
 				<div className="welcome-content">
-					<p>No repositories tracked yet.</p>
-					<p className="muted">Add a repository to get started:</p>
+					<p>{repos.length === 0 ? "No repositories tracked yet." : "Select a repository to get started."}</p>
+					<p className="muted">{repos.length === 0 ? "Add a repository to get started:" : ""}</p>
 					<RepoPicker
 						repos={repos}
 						currentRepo={currentRepo}
