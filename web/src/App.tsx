@@ -97,6 +97,7 @@ export default function App() {
 			// Check for multi-key sequences (within 500ms)
 			if (lastKey === "g" && e.key === "g" && timeSinceLastKey < 500) {
 				// gg - go to first file
+				e.preventDefault();
 				setFocusedIndex(0);
 				lastKeyRef.current = null;
 				return;
@@ -110,20 +111,24 @@ export default function App() {
 
 			switch (e.key) {
 				case "j":
+					e.preventDefault();
 					setFocusedIndex((i) => Math.min(i + 1, files.length - 1));
 					break;
 				case "k":
+					e.preventDefault();
 					setFocusedIndex((i) => Math.max(i - 1, 0));
 					break;
 				case "o":
 				case "Enter":
 				case "l":
+					e.preventDefault();
 					// Expand/toggle file
 					if (focusedFile) {
 						void toggleFile(focusedFile.path);
 					}
 					break;
 				case "h":
+					e.preventDefault();
 					// Collapse file
 					if (focusedFile && expandedFiles.has(focusedFile.path)) {
 						setExpandedFiles((prev) => {
@@ -133,7 +138,12 @@ export default function App() {
 						});
 					}
 					break;
+				case "g":
+					// First part of gg sequence - prevent sound
+					e.preventDefault();
+					break;
 				case "G":
+					e.preventDefault();
 					// Go to last file
 					if (files.length > 0) {
 						setFocusedIndex(files.length - 1);
@@ -152,40 +162,49 @@ export default function App() {
 						e.preventDefault();
 						setFocusedIndex((i) => Math.max(i - HALF_PAGE_SIZE, 0));
 					} else if (focusedFile && mode === "staged") {
+						e.preventDefault();
 						void unstageFile(focusedFile.path);
 					}
 					break;
 				case "v":
+					e.preventDefault();
 					// Toggle viewed
 					if (focusedFile) {
 						void toggleViewed(focusedFile.path, focusedFile.viewed);
 					}
 					break;
 				case "s":
+					e.preventDefault();
 					// Stage file
 					if (focusedFile && mode === "working") {
 						void stageFile(focusedFile.path);
 					}
 					break;
 				case "x":
+					e.preventDefault();
 					// Discard with confirmation
 					if (focusedFile && (mode === "working" || mode === "staged")) {
 						setConfirmDiscard(focusedFile.path);
 					}
 					break;
 				case "1":
+					e.preventDefault();
 					setMode("branch");
 					break;
 				case "2":
+					e.preventDefault();
 					setMode("working");
 					break;
 				case "3":
+					e.preventDefault();
 					setMode("staged");
 					break;
 				case "?":
+					e.preventDefault();
 					setShowShortcuts((s) => !s);
 					break;
 				case "Escape":
+					e.preventDefault();
 					setShowShortcuts(false);
 					setConfirmDiscard(null);
 					setActiveComment(null);
