@@ -60,15 +60,13 @@ export function DiffView({
 				<div className="annotation comment-annotation">
 					<div className="annotation-content">{comment.text}</div>
 					<div className="annotation-footer">
-						<span className="annotation-time">
+						<span className="annotation-meta">
 							{new Date(comment.timestamp * 1000).toLocaleString()}
 						</span>
 						<button
 							type="button"
 							className="annotation-action"
-							onClick={() => {
-								onResolveComment(comment.id);
-							}}
+							onClick={() => onResolveComment(comment.id)}
 						>
 							Resolve
 						</button>
@@ -81,18 +79,16 @@ export function DiffView({
 			const note = metadata.note;
 			return (
 				<div className={`annotation note-annotation note-${note.type}`}>
-					<div className="annotation-header">
-						<span className="note-type-badge">{note.type}</span>
-						<span className="note-author">@{note.author}</span>
-					</div>
 					<div className="annotation-content">{note.text}</div>
 					<div className="annotation-footer">
+						<span className="annotation-meta">
+							<span className="note-type-badge">{note.type}</span>
+							<span className="note-author">@{note.author}</span>
+						</span>
 						<button
 							type="button"
-							className="annotation-action dismiss"
-							onClick={() => {
-								onDismissNote(note.id);
-							}}
+							className="annotation-action"
+							onClick={() => onDismissNote(note.id)}
 						>
 							Dismiss
 						</button>

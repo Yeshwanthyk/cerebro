@@ -1182,3 +1182,12 @@ body {
 .annotation-action.dismiss:hover {
   color: var(--color-text);
 }
+
+/* Consistent annotation footer */
+.annotation-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 11px;
+}
