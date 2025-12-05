@@ -9,7 +9,7 @@ interface FileCardProps {
 	isExpanded: boolean;
 	isLoading?: boolean;
 	isFocused: boolean;
-	mode: "branch" | "working" | "staged";
+	mode: "branch" | "working";
 	onToggle: () => void;
 	onToggleViewed: () => void;
 	onResolveComment: (id: string) => void;
@@ -65,9 +65,7 @@ export function FileCard({
 						<span className="deletions">-{file.deletions}</span>
 					</span>
 					{file.staged && (
-						<span className="staged-indicator" title="File has staged changes">
-							✓
-						</span>
+						<span className="staged-indicator">Staged</span>
 					)}
 					{unresolvedComments > 0 && (
 						<span className="badge comments-badge">{unresolvedComments}</span>
@@ -78,24 +76,17 @@ export function FileCard({
 				</button>
 
 				<div className="file-actions">
-					{mode === "working" &&
-						(file.staged
-							? onUnstage && (
-									<button type="button" className="action-btn unstage" onClick={onUnstage}>
-										Unstage
-									</button>
-								)
-							: onStage && (
-									<button type="button" className="action-btn stage" onClick={onStage}>
-										Stage
-									</button>
-								))}
-					{mode === "staged" && onUnstage && (
+					{mode === "working" && file.staged && onUnstage && (
 						<button type="button" className="action-btn unstage" onClick={onUnstage}>
 							Unstage
 						</button>
 					)}
-					{(mode === "working" || mode === "branch") && onDiscard && (
+					{mode === "working" && !file.staged && onStage && (
+						<button type="button" className="action-btn stage" onClick={onStage}>
+							Stage
+						</button>
+					)}
+					{mode === "working" && onDiscard && (
 						<button type="button" className="action-btn discard" onClick={onDiscard}>
 							Discard
 						</button>

@@ -171,11 +171,11 @@ export default function App() {
 					}
 					break;
 				case "u":
-					// Ctrl+u - half page up, or unstage
+					// Ctrl+u - half page up, or unstage (in working mode, for staged files)
 					if (e.ctrlKey) {
 						e.preventDefault();
 						setFocusedIndex((i) => Math.max(i - HALF_PAGE_SIZE, 0));
-					} else if (focusedFile && mode === "staged") {
+					} else if (focusedFile && mode === "working" && focusedFile.staged) {
 						e.preventDefault();
 						void unstageFile(focusedFile.path);
 					}
@@ -189,15 +189,15 @@ export default function App() {
 					break;
 				case "s":
 					e.preventDefault();
-					// Stage file
-					if (focusedFile && mode === "working") {
+					// Stage file (only unstaged files)
+					if (focusedFile && mode === "working" && !focusedFile.staged) {
 						void stageFile(focusedFile.path);
 					}
 					break;
 				case "x":
 					e.preventDefault();
 					// Discard with confirmation
-					if (focusedFile && (mode === "working" || mode === "staged")) {
+					if (focusedFile && mode === "working") {
 						setConfirmDiscard(focusedFile.path);
 					}
 					break;
@@ -209,13 +209,13 @@ export default function App() {
 					e.preventDefault();
 					setMode("working");
 					break;
-				case "3":
-					e.preventDefault();
-					setMode("staged");
-					break;
 				case "?":
 					e.preventDefault();
 					setShowShortcuts((s) => !s);
+					break;
+				case "t":
+					e.preventDefault();
+					setDiffStyle((s) => (s === "split" ? "unified" : "split"));
 					break;
 				case "Escape":
 					e.preventDefault();
@@ -407,46 +407,41 @@ export default function App() {
 							className={mode === "working" ? "active" : ""}
 							onClick={() => setMode("working")}
 						>
-							Unstaged
-						</button>
-						<button
-							type="button"
-							className={mode === "staged" ? "active" : ""}
-							onClick={() => setMode("staged")}
-						>
-							Staged
+							Working
 						</button>
 					</div>
-					{mode === "branch" && currentRepoData && (
-						<div className="branch-selector" onClick={(e) => e.stopPropagation()}>
-							<button
-								type="button"
-								className="branch-selector-btn"
-								onClick={() => setShowBranchPicker(!showBranchPicker)}
-							>
-								vs {compareBranch || currentRepoData.baseBranch}
-								<span className="dropdown-arrow">▼</span>
-							</button>
-							{showBranchPicker && (
-								<div className="branch-picker">
-									{branches.map((b) => (
-										<button
-											key={b}
-											type="button"
-											className={b === (compareBranch || currentRepoData.baseBranch) ? "active" : ""}
-											onClick={() => {
-												setCompareBranch(b);
-												setShowBranchPicker(false);
-											}}
-										>
-											{b}
-										</button>
-									))}
-								</div>
-							)}
-						</div>
-					)}
-					{mode === "staged" && fileCount > 0 && (
+					<div 
+						className="branch-selector" 
+						onClick={(e) => e.stopPropagation()}
+						style={{ visibility: mode === "branch" ? "visible" : "hidden" }}
+					>
+						<button
+							type="button"
+							className="branch-selector-btn"
+							onClick={() => setShowBranchPicker(!showBranchPicker)}
+						>
+							vs {compareBranch || currentRepoData?.baseBranch || "main"}
+							<span className="dropdown-arrow">▼</span>
+						</button>
+						{showBranchPicker && (
+							<div className="branch-picker">
+								{branches.map((b) => (
+									<button
+										key={b}
+										type="button"
+										className={b === (compareBranch || currentRepoData?.baseBranch) ? "active" : ""}
+										onClick={() => {
+											setCompareBranch(b);
+											setShowBranchPicker(false);
+										}}
+									>
+										{b}
+									</button>
+								))}
+							</div>
+						)}
+					</div>
+					{mode === "working" && files.some((f) => f.staged) && (
 						<button type="button" className="commit-btn" onClick={() => void handleCommit()}>
 							Commit
 						</button>
@@ -548,7 +543,7 @@ export default function App() {
 						<ul>
 							<li><kbd>1</kbd> Branch mode</li>
 							<li><kbd>2</kbd> Working mode</li>
-							<li><kbd>3</kbd> Staged mode</li>
+							<li><kbd>t</kbd> Toggle split/unified</li>
 							<li><kbd>?</kbd> Toggle shortcuts</li>
 						</ul>
 					</div>

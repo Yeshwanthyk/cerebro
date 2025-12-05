@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Comment, DiffResponse, FileDiff, Note } from "../api/types";
 
-type DiffMode = "branch" | "working" | "staged";
+type DiffMode = "branch" | "working";
+
+interface CachedData {
+	diff: DiffResponse | null;
+	comments: Comment[];
+	notes: Note[];
+	timestamp: number;
+}
 
 interface UseDiffResult {
 	diff: DiffResponse | null;
@@ -31,6 +38,11 @@ interface UseDiffResult {
 	commit: (message: string) => Promise<void>;
 }
 
+// Cache key includes mode and branch for branch mode
+function getCacheKey(mode: DiffMode, compareBranch: string | null): string {
+	return mode === "branch" ? `branch:${compareBranch || "default"}` : mode;
+}
+
 export function useDiff(repoId?: string | null): UseDiffResult {
 	const [diff, setDiff] = useState<DiffResponse | null>(null);
 	const [comments, setComments] = useState<Comment[]>([]);
@@ -40,6 +52,9 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 	const [mode, setMode] = useState<DiffMode>("branch");
 	const [branches, setBranches] = useState<string[]>([]);
 	const [compareBranch, setCompareBranch] = useState<string | null>(null);
+	
+	// Cache per mode/branch combination
+	const cacheRef = useRef<Map<string, CachedData>>(new Map());
 
 	const buildUrl = useCallback(
 		(path: string, params: Record<string, string> = {}) => {
@@ -73,15 +88,29 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 	}, [repoId]);
 
 	const fetchData = useCallback(
-		async (currentMode: DiffMode, currentCompareBranch: string | null) => {
+		async (currentMode: DiffMode, currentCompareBranch: string | null, background = false) => {
 			if (!repoId) {
 				setLoading(false);
 				setDiff(null);
 				return;
 			}
 
+			const cacheKey = getCacheKey(currentMode, currentCompareBranch);
+			
+			// Show cached data immediately if available (unless background refresh)
+			if (!background) {
+				const cached = cacheRef.current.get(cacheKey);
+				if (cached) {
+					setDiff(cached.diff);
+					setComments(cached.comments);
+					setNotes(cached.notes);
+					setLoading(false);
+				} else {
+					setLoading(true);
+				}
+			}
+
 			try {
-				setLoading(true);
 				const diffParams: Record<string, string> = { mode: currentMode };
 				if (currentCompareBranch) {
 					diffParams.compare = currentCompareBranch;
@@ -92,45 +121,35 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 					fetch(buildUrl("/api/notes", { mode: currentMode })),
 				];
 
-				// In working mode, also fetch staged files to mark them
-				if (currentMode === "working") {
-					fetches.push(fetch(buildUrl("/api/diff", { mode: "staged" })).catch(() => ({ ok: false }) as Response));
-				}
-
-				const [diffRes, commentsRes, notesRes, stagedRes] = await Promise.all(fetches);
+				const [diffRes, commentsRes, notesRes] = await Promise.all(fetches);
 
 				if (!diffRes.ok) {
 					throw new Error(await diffRes.text());
 				}
 
-				let diffData = (await diffRes.json()) as DiffResponse;
+				const diffData = (await diffRes.json()) as DiffResponse;
 
-				// Mark files that are also staged
-				if (currentMode === "working" && stagedRes?.ok) {
-					const stagedData = (await stagedRes.json()) as DiffResponse;
-					const stagedPaths = new Set(stagedData.files.map((f) => f.path));
-					diffData = {
-						...diffData,
-						files: diffData.files.map((f) => ({
-							...f,
-							staged: stagedPaths.has(f.path),
-						})),
-					};
-				}
+				const commentsData = commentsRes.ok ? ((await commentsRes.json()) as Comment[]) : [];
+				const notesData = notesRes.ok ? ((await notesRes.json()) as Note[]) : [];
 
+				// Update cache
+				cacheRef.current.set(cacheKey, {
+					diff: diffData,
+					comments: commentsData,
+					notes: notesData,
+					timestamp: Date.now(),
+				});
+
+				// Only update state if this is still the current mode
 				setDiff(diffData);
-
-				if (commentsRes.ok) {
-					setComments((await commentsRes.json()) as Comment[]);
-				}
-
-				if (notesRes.ok) {
-					setNotes((await notesRes.json()) as Note[]);
-				}
-
+				setComments(commentsData);
+				setNotes(notesData);
 				setError(null);
 			} catch (err) {
-				setError(err instanceof Error ? err.message : "Failed to load");
+				// Only show error if no cached data
+				if (!cacheRef.current.has(cacheKey)) {
+					setError(err instanceof Error ? err.message : "Failed to load");
+				}
 			} finally {
 				setLoading(false);
 			}
@@ -138,29 +157,28 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 		[repoId, buildUrl],
 	);
 
+	// Clear cache when repo changes
+	useEffect(() => {
+		cacheRef.current.clear();
+	}, [repoId]);
+
 	useEffect(() => {
 		void fetchData(mode, compareBranch);
 	}, [mode, compareBranch, fetchData, repoId]);
 
-	// Auto-refresh comments every 3s
+	// Background refresh every 3s to keep cache fresh
 	useEffect(() => {
 		if (!repoId) return;
 
 		const interval = setInterval(() => {
-			fetch(buildUrl("/api/comments", { mode }))
-				.then(async (commentsRes) => {
-					if (commentsRes.ok) {
-						setComments((await commentsRes.json()) as Comment[]);
-					}
-				})
-				.catch(() => {
-					/* ignore */
-				});
+			void fetchData(mode, compareBranch, true);
 		}, 3000);
 		return () => {
 			clearInterval(interval);
 		};
-	}, [mode, repoId, buildUrl]);
+	}, [mode, compareBranch, repoId, fetchData]);
+
+
 
 	const refresh = useCallback(() => fetchData(mode, compareBranch), [mode, compareBranch, fetchData]);
 

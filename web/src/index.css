@@ -137,6 +137,8 @@ body {
   font-weight: 500;
   cursor: pointer;
   border-radius: 5px;
+  min-width: 70px;
+  text-align: center;
 }
 
 .mode-switcher button.active {
@@ -320,10 +322,14 @@ body {
 }
 
 .staged-indicator {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-added);
   font-weight: 600;
-  padding: 0 4px;
+  padding: 2px 6px;
+  background: color-mix(in srgb, var(--color-added) 15%, transparent);
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .badge {
