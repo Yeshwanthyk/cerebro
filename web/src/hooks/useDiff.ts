@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Comment, DiffResponse, FileDiff } from "../api/types";
+import type { Comment, DiffResponse, FileDiff, Note } from "../api/types";
 
 type DiffMode = "branch" | "working" | "staged";
 
 interface UseDiffResult {
 	diff: DiffResponse | null;
 	comments: Comment[];
+	notes: Note[];
 	loading: boolean;
 	error: string | null;
 	mode: DiffMode;
@@ -20,6 +21,7 @@ interface UseDiffResult {
 		lineContent?: string,
 	) => Promise<void>;
 	resolveComment: (commentId: string) => Promise<void>;
+	dismissNote: (noteId: string) => Promise<void>;
 	stageFile: (filePath: string) => Promise<void>;
 	unstageFile: (filePath: string) => Promise<void>;
 	discardFile: (filePath: string) => Promise<void>;
@@ -29,6 +31,7 @@ interface UseDiffResult {
 export function useDiff(repoId?: string | null): UseDiffResult {
 	const [diff, setDiff] = useState<DiffResponse | null>(null);
 	const [comments, setComments] = useState<Comment[]>([]);
+	const [notes, setNotes] = useState<Note[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [mode, setMode] = useState<DiffMode>("branch");
@@ -60,6 +63,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 				const fetches: Promise<Response>[] = [
 					fetch(buildUrl("/api/diff", { mode: currentMode })),
 					fetch(buildUrl("/api/comments", { mode: currentMode })),
+					fetch(buildUrl("/api/notes", { mode: currentMode })),
 				];
 
 				// In working mode, also fetch staged files to mark them
@@ -67,7 +71,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 					fetches.push(fetch(buildUrl("/api/diff", { mode: "staged" })).catch(() => ({ ok: false }) as Response));
 				}
 
-				const [diffRes, commentsRes, stagedRes] = await Promise.all(fetches);
+				const [diffRes, commentsRes, notesRes, stagedRes] = await Promise.all(fetches);
 
 				if (!diffRes.ok) {
 					throw new Error(await diffRes.text());
@@ -92,6 +96,10 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 
 				if (commentsRes.ok) {
 					setComments((await commentsRes.json()) as Comment[]);
+				}
+
+				if (notesRes.ok) {
+					setNotes((await notesRes.json()) as Note[]);
 				}
 
 				setError(null);
@@ -214,6 +222,21 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 		[buildUrl],
 	);
 
+	const dismissNote = useCallback(
+		async (noteId: string) => {
+			const res = await fetch(buildUrl("/api/notes/dismiss"), {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ note_id: noteId }),
+			});
+			if (!res.ok) {
+				throw new Error("Failed to dismiss");
+			}
+			setNotes((prev) => prev.map((n) => (n.id === noteId ? { ...n, dismissed: true } : n)));
+		},
+		[buildUrl],
+	);
+
 	const stageFile = useCallback(
 		async (filePath: string) => {
 			const res = await fetch(buildUrl("/api/stage"), {
@@ -277,6 +300,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 	return {
 		diff,
 		comments,
+		notes,
 		loading,
 		error,
 		mode,
@@ -286,6 +310,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 		toggleViewed,
 		addComment,
 		resolveComment,
+		dismissNote,
 		stageFile,
 		unstageFile,
 		discardFile,

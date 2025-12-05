@@ -1,9 +1,10 @@
-import type { Comment, FileDiff } from "../api/types";
+import type { Comment, FileDiff, Note } from "../api/types";
 import { DiffView } from "./DiffView";
 
 interface FileCardProps {
 	file: FileDiff;
 	comments: Comment[];
+	notes: Note[];
 	diffStyle: "split" | "unified";
 	isExpanded: boolean;
 	isLoading?: boolean;
@@ -12,6 +13,7 @@ interface FileCardProps {
 	onToggle: () => void;
 	onToggleViewed: () => void;
 	onResolveComment: (id: string) => void;
+	onDismissNote: (id: string) => void;
 	onStage?: () => void;
 	onUnstage?: () => void;
 	onDiscard?: () => void;
@@ -29,6 +31,7 @@ const STATUS_STYLES: Record<string, { label: string; color: string }> = {
 export function FileCard({
 	file,
 	comments,
+	notes,
 	diffStyle,
 	isExpanded,
 	isLoading,
@@ -37,6 +40,7 @@ export function FileCard({
 	onToggle,
 	onToggleViewed,
 	onResolveComment,
+	onDismissNote,
 	onStage,
 	onUnstage,
 	onDiscard,
@@ -44,6 +48,7 @@ export function FileCard({
 }: FileCardProps) {
 	const status = STATUS_STYLES[file.status] ?? STATUS_STYLES.modified;
 	const unresolvedComments = comments.filter((c) => !c.resolved).length;
+	const activeNotes = notes.filter((n) => !n.dismissed).length;
 	const fileLevelComments = comments.filter((c) => !c.resolved && c.line_number == null);
 
 	return (
@@ -66,6 +71,9 @@ export function FileCard({
 					)}
 					{unresolvedComments > 0 && (
 						<span className="badge comments-badge">{unresolvedComments}</span>
+					)}
+					{activeNotes > 0 && (
+						<span className="badge notes-badge">{activeNotes}</span>
 					)}
 				</button>
 
@@ -131,8 +139,10 @@ export function FileCard({
 							<DiffView
 								file={file}
 								comments={comments}
+								notes={notes}
 								diffStyle={diffStyle}
 								onResolveComment={onResolveComment}
+								onDismissNote={onDismissNote}
 								onLineClick={onLineClick}
 							/>
 						)}

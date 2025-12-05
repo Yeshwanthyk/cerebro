@@ -22,6 +22,7 @@ export default function App() {
 	const {
 		diff,
 		comments,
+		notes,
 		loading,
 		error,
 		mode,
@@ -29,6 +30,7 @@ export default function App() {
 		toggleViewed,
 		addComment,
 		resolveComment,
+		dismissNote,
 		stageFile,
 		unstageFile,
 		discardFile,
@@ -219,6 +221,7 @@ export default function App() {
 	}, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode]);
 
 	const getCommentsForFile = (path: string) => (comments ?? []).filter((c) => c.file_path === path);
+	const getNotesForFile = (path: string) => (notes ?? []).filter((n) => (n.file_path === path || n.file_path.endsWith(`/${path}`)) && !n.dismissed);
 
 	const handleToggleViewed = async (path: string, viewed: boolean) => {
 		try {
@@ -231,6 +234,14 @@ export default function App() {
 	const handleResolveComment = async (id: string) => {
 		try {
 			await resolveComment(id);
+		} catch {
+			// ignore
+		}
+	};
+
+	const handleDismissNote = async (id: string) => {
+		try {
+			await dismissNote(id);
 		} catch {
 			// ignore
 		}
@@ -439,6 +450,7 @@ export default function App() {
 							key={file.path}
 							file={file}
 							comments={getCommentsForFile(file.path)}
+							notes={getNotesForFile(file.path)}
 							diffStyle={diffStyle}
 							isExpanded={expandedFiles.has(file.path)}
 							isLoading={loadingFiles.has(file.path)}
@@ -450,6 +462,7 @@ export default function App() {
 							}}
 							onToggleViewed={() => void handleToggleViewed(file.path, file.viewed)}
 							onResolveComment={(id) => void handleResolveComment(id)}
+							onDismissNote={(id) => void handleDismissNote(id)}
 							onStage={() => void handleStage(file.path)}
 							onUnstage={() => void handleUnstage(file.path)}
 							onDiscard={() => {
