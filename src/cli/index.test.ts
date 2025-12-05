@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync, mkdirSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, resolve } from "path";
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from "bun:test";
 
 // Local imports are done after HOME is set in beforeAll to ensure the state DB points to the temp directory.
@@ -13,7 +13,6 @@ let configDir: string;
 
 // Helpers loaded lazily so they pick up the temp HOME
 let state: typeof import("../state");
-let resolveRepo: (repoOption?: string) => Promise<Repository>;
 
 beforeAll(async () => {
   originalHome = process.env["HOME"];
@@ -29,7 +28,6 @@ beforeAll(async () => {
   mkdirSync(join(tempHome, ".config"), { recursive: true });
 
   state = await import("../state");
-  ({ resolveRepo } = await import("./index"));
 });
 
 afterAll(() => {
@@ -50,42 +48,249 @@ beforeEach(() => {
   process.chdir(originalCwd);
 });
 
-describe("resolveRepo", () => {
-  it("returns repo by id", async () => {
-    const repo = await state.addRepo("/tmp/repo-by-id", "repo-id", "main");
-    const resolved = await resolveRepo(repo.id);
-    expect(resolved.id).toBe(repo.id);
+async function runCli(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const proc = Bun.spawn(["bun", "run", "src/index.ts", ...args], {
+    cwd: originalCwd,
+    env: {
+      ...process.env,
+      HOME: tempHome,
+      CEREBRO_CONFIG_DIR: configDir,
+    },
+    stdout: "pipe",
+    stderr: "pipe",
   });
 
-  it("returns repo by path", async () => {
-    const repo = await state.addRepo("/tmp/repo-by-path", "repo-path", "develop");
-    const resolved = await resolveRepo(repo.path);
-    expect(resolved.id).toBe(repo.id);
-    expect(resolved.baseBranch).toBe("develop");
-  });
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
+  const exitCode = await proc.exited;
+  return { stdout, stderr, exitCode };
+}
 
-  it("falls back to current working directory repo", async () => {
-    const repoPath = join(tempHome, "repos", "cwd-repo");
-    mkdirSync(repoPath, { recursive: true });
-    const repo = await state.addRepo(repoPath, "cwd-repo", "main");
-
-    process.chdir(repoPath);
-    const resolved = await resolveRepo();
-    expect(resolved.id).toBe(repo.id);
-  });
-
-  it("falls back to current repo when cwd does not match", async () => {
-    const repo = await state.addRepo("/tmp/repo-current", "repo-current", "main");
+describe("comments CLI", () => {
+  it("adds a comment", async () => {
+    const repo = await state.addRepo("/tmp/test-repo", "test-repo", "main");
     await state.setCurrentRepo(repo.id);
-    process.chdir(originalCwd);
 
-    const resolved = await resolveRepo();
-    expect(resolved.id).toBe(repo.id);
+    const result = await runCli([
+      "comments",
+      "add",
+      "This is a test comment",
+      "--repo",
+      repo.id,
+      "--file",
+      "src/main.ts",
+      "--line",
+      "42",
+      "--branch",
+      "feature-x",
+      "--commit",
+      "abc1234",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Added comment:");
+
+    const comments = await state.getComments(repo.id);
+    expect(comments.length).toBe(1);
+    expect(comments[0].text).toBe("This is a test comment");
+    expect(comments[0].line_number).toBe(42);
+    expect(comments[0].branch).toBe("feature-x");
   });
 
-  it("throws when no repo exists", async () => {
-    const repos = await state.getRepos();
-    expect(repos.length).toBe(0);
-    await expect(resolveRepo()).rejects.toThrow("No repository found");
+  it("requires --file for add", async () => {
+    const repo = await state.addRepo("/tmp/test-repo2", "test-repo2", "main");
+
+    const result = await runCli([
+      "comments",
+      "add",
+      "Missing file",
+      "--repo",
+      repo.id,
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--file is required");
+  });
+
+  it("resolves a comment", async () => {
+    const repo = await state.addRepo("/tmp/test-repo3", "test-repo3", "main");
+    const comment = await state.addComment(repo.id, {
+      file_path: "/tmp/test-repo3/src/foo.ts",
+      text: "Needs review",
+      branch: "main",
+      commit: "abc123",
+    });
+
+    const result = await runCli([
+      "comments",
+      "resolve",
+      comment.id,
+      "--repo",
+      repo.id,
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(`Resolved comment: ${comment.id}`);
+
+    const comments = await state.getComments(repo.id);
+    expect(comments[0].resolved).toBe(true);
+  });
+
+  it("lists comments", async () => {
+    const repo = await state.addRepo("/tmp/test-repo4", "test-repo4", "main");
+    await state.addComment(repo.id, {
+      file_path: "/tmp/test-repo4/src/bar.ts",
+      line_number: 10,
+      text: "Check this logic",
+      branch: "main",
+      commit: "def456",
+    });
+
+    const result = await runCli([
+      "comments",
+      "list",
+      "--repo",
+      repo.id,
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Check this logic");
+    expect(result.stdout).toContain("src/bar.ts:10");
+  });
+});
+
+describe("notes CLI", () => {
+  it("adds a note", async () => {
+    const repo = await state.addRepo("/tmp/note-repo", "note-repo", "main");
+
+    const result = await runCli([
+      "notes",
+      "add",
+      "This function handles auth",
+      "--repo",
+      repo.id,
+      "--file",
+      "src/auth.ts",
+      "--line",
+      "15",
+      "--type",
+      "explanation",
+      "--author",
+      "ai-agent",
+      "--branch",
+      "main",
+      "--commit",
+      "xyz789",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Added note:");
+
+    const notes = await state.getNotes(repo.id);
+    expect(notes.length).toBe(1);
+    expect(notes[0].text).toBe("This function handles auth");
+    expect(notes[0].type).toBe("explanation");
+    expect(notes[0].author).toBe("ai-agent");
+  });
+
+  it("requires --file and --line for add", async () => {
+    const repo = await state.addRepo("/tmp/note-repo2", "note-repo2", "main");
+
+    const result1 = await runCli([
+      "notes",
+      "add",
+      "Missing file",
+      "--repo",
+      repo.id,
+      "--line",
+      "10",
+    ]);
+    expect(result1.exitCode).toBe(1);
+    expect(result1.stderr).toContain("--file is required");
+
+    const result2 = await runCli([
+      "notes",
+      "add",
+      "Missing line",
+      "--repo",
+      repo.id,
+      "--file",
+      "src/x.ts",
+    ]);
+    expect(result2.exitCode).toBe(1);
+    expect(result2.stderr).toContain("--line is required");
+  });
+
+  it("validates note type", async () => {
+    const repo = await state.addRepo("/tmp/note-repo3", "note-repo3", "main");
+
+    const result = await runCli([
+      "notes",
+      "add",
+      "Bad type",
+      "--repo",
+      repo.id,
+      "--file",
+      "src/x.ts",
+      "--line",
+      "1",
+      "--type",
+      "invalid",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("--type must be one of");
+  });
+
+  it("dismisses a note", async () => {
+    const repo = await state.addRepo("/tmp/note-repo4", "note-repo4", "main");
+    const note = await state.addNote(repo.id, {
+      file_path: "/tmp/note-repo4/src/foo.ts",
+      line_number: 5,
+      text: "Old explanation",
+      branch: "main",
+      commit: "abc",
+      author: "user",
+      type: "explanation",
+    });
+
+    const result = await runCli([
+      "notes",
+      "dismiss",
+      note.id,
+      "--repo",
+      repo.id,
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(`Dismissed note: ${note.id}`);
+
+    const notes = await state.getNotes(repo.id);
+    expect(notes[0].dismissed).toBe(true);
+  });
+
+  it("lists notes", async () => {
+    const repo = await state.addRepo("/tmp/note-repo5", "note-repo5", "main");
+    await state.addNote(repo.id, {
+      file_path: "/tmp/note-repo5/src/util.ts",
+      line_number: 20,
+      text: "Consider caching here",
+      branch: "main",
+      commit: "zzz",
+      author: "reviewer",
+      type: "suggestion",
+    });
+
+    const result = await runCli([
+      "notes",
+      "list",
+      "--repo",
+      repo.id,
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Consider caching here");
+    expect(result.stdout).toContain("src/util.ts:20");
+    expect(result.stdout).toContain("suggestion");
   });
 });

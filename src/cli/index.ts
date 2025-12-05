@@ -262,6 +262,201 @@ commentsCmd
     }
   });
 
+commentsCmd
+  .command("add")
+  .description("Add a comment to a file")
+  .argument("<text>", "Comment text")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("-f, --file <path>", "File path (required)")
+  .option("-l, --line <number>", "Line number")
+  .option("-b, --branch <branch>", "Branch name")
+  .option("-c, --commit <hash>", "Commit hash")
+  .action(async (text: string, options: { repo?: string; file?: string; line?: string; branch?: string; commit?: string }) => {
+    if (!options.file) {
+      console.error("Error: --file is required");
+      process.exit(1);
+    }
+
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    let branch = options.branch;
+    let commit = options.commit;
+    if (!branch || !commit) {
+      const git = getGitManager(repo.path);
+      branch = branch || (await git.getCurrentBranch());
+      commit = commit || (await git.getCurrentCommit());
+    }
+    const filePath = resolve(repo.path, options.file);
+
+    const comment = await state.addComment(repo.id, {
+      file_path: filePath,
+      line_number: options.line ? parseInt(options.line, 10) : undefined,
+      text,
+      branch,
+      commit,
+    });
+
+    console.log(`Added comment: ${comment.id}`);
+  });
+
+commentsCmd
+  .command("resolve")
+  .description("Resolve a comment")
+  .argument("<id>", "Comment ID")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("--by <name>", "Who resolved it", "user")
+  .action(async (id: string, options: { repo?: string; by: string }) => {
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    const success = await state.resolveComment(repo.id, id, options.by);
+    if (success) {
+      console.log(`Resolved comment: ${id}`);
+    } else {
+      console.error(`Comment not found: ${id}`);
+      process.exit(1);
+    }
+  });
+
+// Notes commands
+const notesCmd = program.command("notes").description("Work with notes");
+
+notesCmd
+  .command("list")
+  .description("List notes for a repository")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("-b, --branch <branch>", "Filter by branch")
+  .action(async (options: { repo?: string; branch?: string }) => {
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    const notes = await state.getNotes(repo.id, options.branch);
+
+    if (notes.length === 0) {
+      console.log("No notes found.");
+      return;
+    }
+
+    console.log(`Notes for ${repo.name} (${repo.path}):\n`);
+
+    for (const note of notes) {
+      const location = `${relative(repo.path, note.file_path) || note.file_path}:${note.line_number}`;
+      const metaParts = [
+        note.type,
+        note.branch && `branch ${note.branch}`,
+        note.dismissed ? "dismissed" : "active",
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      console.log(`- [${note.id}] ${location} (${metaParts})`);
+      console.log(`  Author: ${note.author}`);
+      console.log(`  ${note.text}`);
+    }
+  });
+
+notesCmd
+  .command("add")
+  .description("Add a note to a file")
+  .argument("<text>", "Note text")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("-f, --file <path>", "File path (required)")
+  .option("-l, --line <number>", "Line number (required)")
+  .option("-t, --type <type>", "Note type: explanation, rationale, suggestion", "explanation")
+  .option("-a, --author <name>", "Author name", "user")
+  .option("-b, --branch <branch>", "Branch name")
+  .option("-c, --commit <hash>", "Commit hash")
+  .action(async (text: string, options: { repo?: string; file?: string; line?: string; type: string; author: string; branch?: string; commit?: string }) => {
+    if (!options.file) {
+      console.error("Error: --file is required");
+      process.exit(1);
+    }
+    if (!options.line) {
+      console.error("Error: --line is required");
+      process.exit(1);
+    }
+
+    const validTypes = ["explanation", "rationale", "suggestion"];
+    if (!validTypes.includes(options.type)) {
+      console.error(`Error: --type must be one of: ${validTypes.join(", ")}`);
+      process.exit(1);
+    }
+
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    let branch = options.branch;
+    let commit = options.commit;
+    if (!branch || !commit) {
+      const git = getGitManager(repo.path);
+      branch = branch || (await git.getCurrentBranch());
+      commit = commit || (await git.getCurrentCommit());
+    }
+    const filePath = resolve(repo.path, options.file);
+
+    const note = await state.addNote(repo.id, {
+      file_path: filePath,
+      line_number: parseInt(options.line, 10),
+      text,
+      branch,
+      commit,
+      author: options.author,
+      type: options.type as "explanation" | "rationale" | "suggestion",
+    });
+
+    console.log(`Added note: ${note.id}`);
+  });
+
+notesCmd
+  .command("dismiss")
+  .description("Dismiss a note")
+  .argument("<id>", "Note ID")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("--by <name>", "Who dismissed it", "user")
+  .action(async (id: string, options: { repo?: string; by: string }) => {
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    const success = await state.dismissNote(repo.id, id, options.by);
+    if (success) {
+      console.log(`Dismissed note: ${id}`);
+    } else {
+      console.error(`Note not found: ${id}`);
+      process.exit(1);
+    }
+  });
+
 // Version command with more detail
 program
   .command("version")

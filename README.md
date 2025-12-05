@@ -66,34 +66,16 @@ cerebro repo remove <id>     # Remove a repository
 cerebro config set base-branch develop
 cerebro config show
 
-# MCP mode (for AI integration)
-cerebro mcp
+# Comments
+cerebro comments list                              # List all comments
+cerebro comments add "Fix this" -f src/main.ts -l 42   # Add comment
+cerebro comments resolve <id>                      # Resolve comment
+
+# Notes
+cerebro notes list                                 # List all notes
+cerebro notes add "Handles auth" -f src/auth.ts -l 10 -t explanation
+cerebro notes dismiss <id>                         # Dismiss note
 ```
-
-## MCP Integration
-
-Cerebro includes an MCP server for AI assistant integration.
-
-### Claude Desktop Setup
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "cerebro": {
-      "command": "~/.local/bin/cerebro",
-      "args": ["mcp"]
-    }
-  }
-}
-```
-
-After restarting Claude, you can ask:
-- "List all unresolved comments in this repository"
-- "Show me comments on main.go"
-- "Resolve comment with ID xyz"
-- "Add a note explaining this function"
 
 ## How It Works
 
