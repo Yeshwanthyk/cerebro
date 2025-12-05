@@ -175,6 +175,11 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
     return handleDismissNote(req, url);
   }
 
+  // Directory browsing
+  if (path === "/api/browse" && method === "GET") {
+    return handleBrowseDirectory(url);
+  }
+
   // Health check
   if (path === "/api/health") {
     return Response.json({ status: "ok" });
@@ -515,6 +520,92 @@ async function handleDismissNote(req: Request, url: URL): Promise<Response> {
     return Response.json({ error: "Note not found" }, { status: 404 });
   }
   return Response.json({ success: true });
+}
+
+// Directory browser handler
+async function handleBrowseDirectory(url: URL): Promise<Response> {
+  const { readdir, stat } = await import("fs/promises");
+  const { join, dirname, resolve } = await import("path");
+  const { homedir } = await import("os");
+
+  let targetPath = url.searchParams.get("path") || homedir();
+  targetPath = resolve(targetPath);
+
+  try {
+    const stats = await stat(targetPath);
+    if (!stats.isDirectory()) {
+      targetPath = dirname(targetPath);
+    }
+  } catch {
+    // Path doesn't exist, fall back to home
+    targetPath = homedir();
+  }
+
+  const entries: { name: string; path: string; type: "directory" | "file"; isGitRepo: boolean }[] = [];
+
+  try {
+    const items = await readdir(targetPath, { withFileTypes: true });
+    
+    for (const item of items) {
+      // Skip hidden files/dirs except .git indicator
+      if (item.name.startsWith(".") && item.name !== ".git") continue;
+      if (item.name === ".git") continue; // Don't show .git dir itself
+      
+      const fullPath = join(targetPath, item.name);
+      const isDir = item.isDirectory();
+      
+      if (!isDir) continue; // Only show directories for repo picker
+      
+      // Check if it's a git repo
+      let isRepo = false;
+      try {
+        const gitPath = join(fullPath, ".git");
+        const gitStats = await stat(gitPath);
+        isRepo = gitStats.isDirectory();
+      } catch {
+        // Not a git repo
+      }
+      
+      entries.push({
+        name: item.name,
+        path: fullPath,
+        type: "directory",
+        isGitRepo: isRepo,
+      });
+    }
+    
+    // Sort: git repos first, then alphabetical
+    entries.sort((a, b) => {
+      if (a.isGitRepo && !b.isGitRepo) return -1;
+      if (!a.isGitRepo && b.isGitRepo) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+  } catch (err) {
+    return Response.json({ 
+      error: "Cannot read directory",
+      currentPath: targetPath,
+      parentPath: dirname(targetPath),
+      entries: []
+    }, { status: 400 });
+  }
+
+  // Check if current directory is a git repo
+  let currentIsGitRepo = false;
+  try {
+    const gitPath = join(targetPath, ".git");
+    const gitStats = await stat(gitPath);
+    currentIsGitRepo = gitStats.isDirectory();
+  } catch {
+    // Not a git repo
+  }
+
+  return Response.json({
+    currentPath: targetPath,
+    parentPath: dirname(targetPath) !== targetPath ? dirname(targetPath) : null,
+    currentIsGitRepo,
+    entries,
+  });
 }
 
 // Static file serving (production only - assets embedded in binary)

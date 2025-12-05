@@ -4,6 +4,19 @@
 
 Cerebro is a Git diff review tool built with Bun and React, with a native macOS wrapper. It provides a web-based interface for reviewing code changes with GitHub-style UI.
 
+## Post-Update Deployment
+
+**After any code changes, always rebuild and deploy:**
+
+```bash
+# Build everything (CLI + macOS app)
+cd mac && make build
+
+# Deploy to system locations
+cp -r mac/release/Cerebro.app /Applications/
+cp dist-exe/cerebro ~/.local/bin/cerebro
+```
+
 ## Architecture
 
 ### Core Components

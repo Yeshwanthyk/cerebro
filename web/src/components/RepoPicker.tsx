@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Repository } from "../api/types";
+import { DirectoryPicker } from "./DirectoryPicker";
 
 interface RepoPickerProps {
 	repos: Repository[];
@@ -10,25 +11,19 @@ interface RepoPickerProps {
 }
 
 export function RepoPicker({ repos, currentRepo, onSelect, onAdd, onRemove: _onRemove }: RepoPickerProps) {
-	const [showAddModal, setShowAddModal] = useState(false);
-	const [newPath, setNewPath] = useState("");
+	const [showPicker, setShowPicker] = useState(false);
 	const [addError, setAddError] = useState<string | null>(null);
 	const [isAdding, setIsAdding] = useState(false);
 
 	const currentRepoData = repos.find((r) => r.id === currentRepo);
 
-	const handleAdd = async () => {
-		if (!newPath.trim()) {
-			return;
-		}
-
+	const handleAdd = async (path: string) => {
 		setIsAdding(true);
 		setAddError(null);
 
 		try {
-			await onAdd(newPath.trim());
-			setNewPath("");
-			setShowAddModal(false);
+			await onAdd(path);
+			setShowPicker(false);
 		} catch (err) {
 			setAddError(err instanceof Error ? err.message : "Failed to add repository");
 		} finally {
@@ -59,7 +54,7 @@ export function RepoPicker({ repos, currentRepo, onSelect, onAdd, onRemove: _onR
 				))}
 			</select>
 
-			<button type="button" className="add-repo-btn" onClick={() => setShowAddModal(true)} title="Add repository">
+			<button type="button" className="add-repo-btn" onClick={() => setShowPicker(true)} title="Add repository">
 				+
 			</button>
 
@@ -69,60 +64,16 @@ export function RepoPicker({ repos, currentRepo, onSelect, onAdd, onRemove: _onR
 				</span>
 			)}
 
-			{showAddModal && (
-				<div
-					className="modal-overlay"
-					onClick={() => {
-						setShowAddModal(false);
+			{showPicker && (
+				<DirectoryPicker
+					onSelect={(path) => void handleAdd(path)}
+					onCancel={() => {
+						setShowPicker(false);
 						setAddError(null);
 					}}
-				>
-					<div
-						className="add-repo-modal"
-						onClick={(e) => {
-							e.stopPropagation();
-						}}
-					>
-						<h3>Add Repository</h3>
-						<p className="muted">Enter the full path to a git repository</p>
-
-						<input
-							type="text"
-							value={newPath}
-							onChange={(e) => setNewPath(e.target.value)}
-							placeholder="/Users/you/Code/my-project"
-							className="repo-path-input"
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									void handleAdd();
-								}
-							}}
-							autoFocus
-							autoComplete="off"
-							autoCorrect="off"
-							autoCapitalize="off"
-							spellCheck={false}
-						/>
-
-						{addError && <p className="error-text">{addError}</p>}
-
-						<div className="modal-actions">
-							<button
-								type="button"
-								onClick={() => {
-									setShowAddModal(false);
-									setAddError(null);
-								}}
-							>
-								Cancel
-							</button>
-							<button type="button" onClick={() => void handleAdd()} disabled={isAdding || !newPath.trim()}>
-								{isAdding ? "Adding..." : "Add"}
-							</button>
-						</div>
-					</div>
-				</div>
+					isAdding={isAdding}
+					error={addError}
+				/>
 			)}
 		</div>
 	);
