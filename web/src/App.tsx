@@ -441,11 +441,14 @@ export default function App() {
 							</div>
 						)}
 					</div>
-					{mode === "working" && files.some((f) => f.staged) && (
-						<button type="button" className="commit-btn" onClick={() => void handleCommit()}>
-							Commit
-						</button>
-					)}
+					<button
+						type="button"
+						className="commit-btn"
+						onClick={() => void handleCommit()}
+						disabled={mode !== "working" || !files.some((f) => f.staged)}
+					>
+						Commit
+					</button>
 					<button
 						type="button"
 						className={`view-toggle ${diffStyle === "split" ? "active" : ""}`}
