@@ -425,6 +425,7 @@ export default function App() {
 							Working
 						</button>
 					</div>
+					<span className="branch">{diff?.branch}</span>
 					{mode === "branch" && (
 						<div 
 							className="branch-selector" 
@@ -459,10 +460,7 @@ export default function App() {
 						</div>
 					)}
 					{mode === "working" && (
-						<>
-							<span className="branch">{diff?.branch}</span>
-							<span className="commit">{diff?.commit.slice(0, 7)}</span>
-						</>
+						<span className="commit">{diff?.commit.slice(0, 7)}</span>
 					)}
 				</div>
 				<div className="header-right">
