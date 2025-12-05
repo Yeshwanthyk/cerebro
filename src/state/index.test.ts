@@ -162,7 +162,7 @@ describe("repos", () => {
   });
 
   it("setCurrentRepo updates current", async () => {
-    const repo1 = await state.addRepo("/tmp/repo-1", "repo-1", "main");
+    await state.addRepo("/tmp/repo-1", "repo-1", "main");
     const repo2 = await state.addRepo("/tmp/repo-2", "repo-2", "main");
     
     await state.setCurrentRepo(repo2.id);

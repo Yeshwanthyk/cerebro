@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { beforeAll, afterAll, beforeEach, describe, expect, it } from "bun:test";
+import { beforeAll, afterAll, describe, expect, it } from "bun:test";
 import { getGitManager, isGitRepo, getRepoName, type GitManager } from "./index";
 
 let tempDir: string;

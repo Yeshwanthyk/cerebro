@@ -4,6 +4,13 @@ import { join } from "path";
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from "bun:test";
 import { startServer, stopServer } from "./index";
 import * as state from "../state";
+import type { Repository, Comment, DiffResponse } from "../types";
+
+// Type for API responses
+type ApiResponse<T = unknown> = T & {
+  error?: string;
+  success?: boolean;
+};
 
 let tempHome: string;
 let configDir: string;
@@ -85,7 +92,7 @@ describe("health", () => {
   it("GET /api/health returns 200 with status ok", async () => {
     const res = await api("/api/health");
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse<{ status: string }>;
     expect(data.status).toBe("ok");
   });
 
@@ -109,7 +116,7 @@ describe("repos API", () => {
   it("GET /api/repos returns empty initially", async () => {
     const res = await api("/api/repos");
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse<{ repos: Repository[]; currentRepo?: string }>;
     expect(data.repos).toEqual([]);
     expect(data.currentRepo).toBeUndefined();
   });
@@ -120,7 +127,7 @@ describe("repos API", () => {
       body: { path: testRepoPath },
     });
     expect(res.status).toBe(200);
-    const repo = await res.json();
+    const repo = (await res.json()) as Repository;
     expect(repo.id).toBeDefined();
     expect(repo.path).toBe(testRepoPath);
     expect(repo.name).toBe("test-repo");
@@ -136,7 +143,7 @@ describe("repos API", () => {
       body: { path: nonGitPath },
     });
     expect(res.status).toBe(400);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.error).toBe("Not a git repository");
   });
 
@@ -146,7 +153,7 @@ describe("repos API", () => {
       body: {},
     });
     expect(res.status).toBe(400);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.error).toBe("Path is required");
   });
 
@@ -156,14 +163,14 @@ describe("repos API", () => {
       method: "POST",
       body: { path: testRepoPath },
     });
-    const repo1 = await res1.json();
+    const repo1 = (await res1.json()) as Repository;
 
     // Add again
     const res2 = await api("/api/repos", {
       method: "POST",
       body: { path: testRepoPath },
     });
-    const repo2 = await res2.json();
+    const repo2 = (await res2.json()) as Repository;
 
     expect(repo2.id).toBe(repo1.id);
   });
@@ -175,7 +182,7 @@ describe("repos API", () => {
     });
 
     const res = await api("/api/repos");
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse<{ repos: Repository[]; currentRepo?: string }>;
     expect(data.repos.length).toBe(1);
     expect(data.repos[0].path).toBe(testRepoPath);
     expect(data.currentRepo).toBe(data.repos[0].id);
@@ -186,13 +193,13 @@ describe("repos API", () => {
       method: "POST",
       body: { path: testRepoPath },
     });
-    const repo = await addRes.json();
+    const repo = (await addRes.json()) as Repository;
 
     const deleteRes = await api(`/api/repos/${repo.id}`, { method: "DELETE" });
     expect(deleteRes.status).toBe(200);
 
     const listRes = await api("/api/repos");
-    const data = await listRes.json();
+    const data = (await listRes.json()) as ApiResponse<{ repos: Repository[] }>;
     expect(data.repos.length).toBe(0);
   });
 
@@ -206,7 +213,7 @@ describe("repos API", () => {
       method: "POST",
       body: { path: testRepoPath },
     });
-    const repo = await addRes.json();
+    const repo = (await addRes.json()) as Repository;
 
     const res = await api("/api/repos/current", {
       method: "POST",
@@ -232,7 +239,7 @@ describe("diff API", () => {
   it("GET /api/diff returns 400 without repo", async () => {
     const res = await api("/api/diff");
     expect(res.status).toBe(400);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.error).toBe("No repository selected");
   });
 
@@ -245,7 +252,7 @@ describe("diff API", () => {
 
     const res = await api("/api/diff?mode=branch");
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as DiffResponse;
     expect(data.files).toBeDefined();
     expect(data.branch).toBeDefined();
     expect(data.commit).toBeDefined();
@@ -260,7 +267,7 @@ describe("diff API", () => {
 
     const res = await api("/api/diff?mode=working");
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as DiffResponse;
     expect(data.mode).toBe("working");
   });
 
@@ -272,7 +279,7 @@ describe("diff API", () => {
 
     const res = await api("/api/diff?mode=staged");
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as DiffResponse;
     expect(data.mode).toBe("staged");
   });
 
@@ -289,7 +296,7 @@ describe("diff API", () => {
 
     const res = await api("/api/file-diff");
     expect(res.status).toBe(400);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.error).toBe("File path required");
   });
 });
@@ -318,7 +325,7 @@ describe("viewed files API", () => {
       body: { file_path: "README.md" },
     });
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.success).toBe(true);
   });
 
@@ -340,7 +347,7 @@ describe("viewed files API", () => {
       body: { file_path: "README.md" },
     });
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.success).toBe(true);
   });
 });
@@ -363,7 +370,7 @@ describe("comments API", () => {
 
     const res = await api("/api/comments");
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as Comment[];
     expect(data).toEqual([]);
   });
 
@@ -382,7 +389,7 @@ describe("comments API", () => {
       },
     });
     expect(res.status).toBe(200);
-    const comment = await res.json();
+    const comment = (await res.json()) as Comment;
     expect(comment.id).toBeDefined();
     expect(comment.file_path).toBe("README.md");
     expect(comment.line_number).toBe(1);
@@ -404,7 +411,7 @@ describe("comments API", () => {
         text: "To resolve",
       },
     });
-    const comment = await createRes.json();
+    const comment = (await createRes.json()) as Comment;
 
     // Resolve it
     const res = await api("/api/comments/resolve", {
@@ -412,7 +419,7 @@ describe("comments API", () => {
       body: { comment_id: comment.id, resolved_by: "tester" },
     });
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.success).toBe(true);
   });
 
@@ -514,7 +521,7 @@ describe("git operations API", () => {
       body: {},
     });
     expect(res.status).toBe(400);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.error).toBe("Commit message is required");
   });
 
@@ -532,7 +539,7 @@ describe("git operations API", () => {
       body: { file_path: "README.md" },
     });
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse;
     expect(data.success).toBe(true);
 
     // Restore the file for other tests
@@ -554,7 +561,7 @@ describe("git operations API", () => {
       body: { message: "Add new file" },
     });
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const data = (await res.json()) as ApiResponse<{ commit: string }>;
     expect(data.commit).toBeDefined();
   });
 });
@@ -574,7 +581,7 @@ describe("edge cases", () => {
       method: "POST",
       body: { path: testRepoPath },
     });
-    const repo = await addRes.json();
+    const repo = (await addRes.json()) as Repository;
 
     // Use explicit repo ID in query
     const res = await api(`/api/diff?repo=${repo.id}&mode=branch`);
