@@ -334,6 +334,7 @@ export default function App() {
 	const viewedCount = files.filter((f) => f.viewed).length;
 	const fileCount = files.length;
 	const progressPercent = fileCount > 0 ? (viewedCount / fileCount) * 100 : 0;
+	const currentRepoData = repos.find((r) => r.id === currentRepo);
 
 	return (
 		<div className="app">
@@ -352,18 +353,30 @@ export default function App() {
 				</div>
 				<div className="header-right">
 					<div className="mode-switcher">
-						{(["branch", "working", "staged"] as DiffMode[]).map((m) => (
-							<button
-								key={m}
-								type="button"
-								className={mode === m ? "active" : ""}
-								onClick={() => {
-									setMode(m);
-								}}
-							>
-								{m.charAt(0).toUpperCase() + m.slice(1)}
-							</button>
-						))}
+						<button
+							type="button"
+							className={mode === "branch" ? "active" : ""}
+							onClick={() => setMode("branch")}
+						>
+							Branch
+							{mode === "branch" && currentRepoData && (
+								<span className="mode-hint">vs {currentRepoData.baseBranch}</span>
+							)}
+						</button>
+						<button
+							type="button"
+							className={mode === "working" ? "active" : ""}
+							onClick={() => setMode("working")}
+						>
+							Unstaged
+						</button>
+						<button
+							type="button"
+							className={mode === "staged" ? "active" : ""}
+							onClick={() => setMode("staged")}
+						>
+							Staged
+						</button>
 					</div>
 					{mode === "staged" && fileCount > 0 && (
 						<button type="button" className="commit-btn" onClick={() => void handleCommit()}>

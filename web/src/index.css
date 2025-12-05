@@ -1011,3 +1011,15 @@ body {
 .shortcuts-modal li kbd + kbd {
   margin-left: 4px;
 }
+
+/* Mode hint (vs branch) */
+.mode-hint {
+  font-size: 10px;
+  color: var(--color-muted);
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.mode-switcher button.active .mode-hint {
+  color: var(--color-text-secondary);
+}
