@@ -1012,16 +1012,79 @@ body {
   margin-left: 4px;
 }
 
-/* Mode hint (vs branch) */
-.mode-hint {
-  font-size: 10px;
-  color: var(--color-muted);
-  margin-left: 6px;
-  font-weight: 400;
+/* Branch selector */
+.branch-selector {
+  position: relative;
 }
 
-.mode-switcher button.active .mode-hint {
+.branch-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
   color: var(--color-text-secondary);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.branch-selector-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.dropdown-arrow {
+  font-size: 8px;
+  opacity: 0.6;
+}
+
+.branch-picker {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  .branch-picker {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.branch-picker button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.branch-picker button:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.branch-picker button.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 /* Notes */

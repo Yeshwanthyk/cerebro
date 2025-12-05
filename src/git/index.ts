@@ -11,6 +11,7 @@ export interface GitManager {
   getCurrentCommit(): Promise<string>;
   getDefaultBranch(): Promise<string>;
   getRemoteUrl(): Promise<string | undefined>;
+  getBranches(): Promise<string[]>;
   stageFile(filePath: string): Promise<void>;
   unstageFile(filePath: string): Promise<void>;
   discardFile(filePath: string): Promise<void>;
@@ -46,6 +47,11 @@ function createGitManager(repoPath: string, git: SimpleGit): GitManager {
     async getCurrentCommit(): Promise<string> {
       const result = await git.revparse(["HEAD"]);
       return result.trim().slice(0, 7);
+    },
+
+    async getBranches(): Promise<string[]> {
+      const branches = await git.branchLocal();
+      return branches.all;
     },
 
     async getDefaultBranch(): Promise<string> {

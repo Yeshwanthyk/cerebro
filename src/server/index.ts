@@ -117,6 +117,11 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
     return handleSetCurrentRepo(req);
   }
 
+  // Branches route
+  if (path === "/api/branches" && method === "GET") {
+    return handleGetBranches(url);
+  }
+
   // Diff routes
   if (path === "/api/diff" && method === "GET") {
     return handleGetDiff(url);
@@ -289,6 +294,17 @@ async function handleSetCurrentRepo(req: Request): Promise<Response> {
   return Response.json({ success: true });
 }
 
+// Branches handler
+async function handleGetBranches(url: URL): Promise<Response> {
+  const repo = await getCurrentRepoFromRequest(url);
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
+  const git = getGitManager(repo.path);
+  const branches = await git.getBranches();
+  return Response.json({ branches });
+}
+
 // Diff handler
 async function handleGetDiff(url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
@@ -297,9 +313,10 @@ async function handleGetDiff(url: URL): Promise<Response> {
   }
 
   const mode = (url.searchParams.get("mode") || "branch") as DiffMode;
+  const compareBranch = url.searchParams.get("compare") || repo.baseBranch;
   const git = getGitManager(repo.path);
 
-  const diff = await git.getDiff({ baseBranch: repo.baseBranch, mode });
+  const diff = await git.getDiff({ baseBranch: compareBranch, mode });
 
   // Apply viewed state
   const branch = await git.getCurrentBranch();
@@ -327,8 +344,9 @@ async function handleGetFileDiff(url: URL): Promise<Response> {
   }
 
   const mode = (url.searchParams.get("mode") || "branch") as DiffMode;
+  const compareBranch = url.searchParams.get("compare") || repo.baseBranch;
   const git = getGitManager(repo.path);
-  const fileDiff = await git.getFileDiff({ baseBranch: repo.baseBranch, mode, filePath });
+  const fileDiff = await git.getFileDiff({ baseBranch: compareBranch, mode, filePath });
 
   if (!fileDiff) {
     return Response.json({ error: "File not found" }, { status: 404 });

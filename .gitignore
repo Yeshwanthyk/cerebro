@@ -29,6 +29,7 @@ issues.md
 
 # Bun
 *.bun-build
+.*.bun-build
 
 # Config (local overrides)
 .env

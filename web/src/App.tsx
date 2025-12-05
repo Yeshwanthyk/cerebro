@@ -4,7 +4,7 @@ import { RepoPicker } from "./components/RepoPicker";
 import { useDiff } from "./hooks/useDiff";
 import { useRepos } from "./hooks/useRepos";
 
-type DiffMode = "branch" | "working" | "staged";
+
 
 const HALF_PAGE_SIZE = 10;
 
@@ -27,6 +27,9 @@ export default function App() {
 		error,
 		mode,
 		setMode,
+		branches,
+		compareBranch,
+		setCompareBranch,
 		toggleViewed,
 		addComment,
 		resolveComment,
@@ -49,10 +52,19 @@ export default function App() {
 		lineNumber: number;
 		content: string;
 	} | null>(null);
+	const [showBranchPicker, setShowBranchPicker] = useState(false);
 
 	// For vim multi-key sequences (gg)
 	const lastKeyRef = useRef<string | null>(null);
 	const lastKeyTimeRef = useRef<number>(0);
+
+	// Close branch picker on click outside
+	useEffect(() => {
+		if (!showBranchPicker) return;
+		const handleClickOutside = () => setShowBranchPicker(false);
+		document.addEventListener("click", handleClickOutside);
+		return () => document.removeEventListener("click", handleClickOutside);
+	}, [showBranchPicker]);
 
 	const files = useMemo(() => diff?.files ?? [], [diff?.files]);
 
@@ -389,9 +401,6 @@ export default function App() {
 							onClick={() => setMode("branch")}
 						>
 							Branch
-							{mode === "branch" && currentRepoData && (
-								<span className="mode-hint">vs {currentRepoData.baseBranch}</span>
-							)}
 						</button>
 						<button
 							type="button"
@@ -408,6 +417,35 @@ export default function App() {
 							Staged
 						</button>
 					</div>
+					{mode === "branch" && currentRepoData && (
+						<div className="branch-selector" onClick={(e) => e.stopPropagation()}>
+							<button
+								type="button"
+								className="branch-selector-btn"
+								onClick={() => setShowBranchPicker(!showBranchPicker)}
+							>
+								vs {compareBranch || currentRepoData.baseBranch}
+								<span className="dropdown-arrow">▼</span>
+							</button>
+							{showBranchPicker && (
+								<div className="branch-picker">
+									{branches.map((b) => (
+										<button
+											key={b}
+											type="button"
+											className={b === (compareBranch || currentRepoData.baseBranch) ? "active" : ""}
+											onClick={() => {
+												setCompareBranch(b);
+												setShowBranchPicker(false);
+											}}
+										>
+											{b}
+										</button>
+									))}
+								</div>
+							)}
+						</div>
+					)}
 					{mode === "staged" && fileCount > 0 && (
 						<button type="button" className="commit-btn" onClick={() => void handleCommit()}>
 							Commit
