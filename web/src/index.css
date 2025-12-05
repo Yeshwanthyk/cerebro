@@ -989,3 +989,25 @@ body {
   display: flex;
   justify-content: flex-end;
 }
+
+/* Improved shortcuts modal */
+.shortcuts-modal h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.shortcuts-modal h3:first-child {
+  margin-top: 0;
+}
+
+.shortcuts-modal ul {
+  margin-bottom: 8px;
+}
+
+.shortcuts-modal li kbd + kbd {
+  margin-left: 4px;
+}

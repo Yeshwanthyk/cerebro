@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileCard } from "./components/FileCard";
 import { RepoPicker } from "./components/RepoPicker";
 import { useDiff } from "./hooks/useDiff";
 import { useRepos } from "./hooks/useRepos";
 
 type DiffMode = "branch" | "working" | "staged";
+
+const HALF_PAGE_SIZE = 10;
 
 export default function App() {
 	const {
@@ -46,6 +48,10 @@ export default function App() {
 		content: string;
 	} | null>(null);
 
+	// For vim multi-key sequences (gg)
+	const lastKeyRef = useRef<string | null>(null);
+	const lastKeyTimeRef = useRef<number>(0);
+
 	const files = useMemo(() => diff?.files ?? [], [diff?.files]);
 
 	const toggleFile = useCallback(
@@ -84,6 +90,24 @@ export default function App() {
 				return;
 			}
 
+			const now = Date.now();
+			const lastKey = lastKeyRef.current;
+			const timeSinceLastKey = now - lastKeyTimeRef.current;
+
+			// Check for multi-key sequences (within 500ms)
+			if (lastKey === "g" && e.key === "g" && timeSinceLastKey < 500) {
+				// gg - go to first file
+				setFocusedIndex(0);
+				lastKeyRef.current = null;
+				return;
+			}
+
+			// Store this key for potential sequence
+			lastKeyRef.current = e.key;
+			lastKeyTimeRef.current = now;
+
+			const focusedFile = files[focusedIndex];
+
 			switch (e.key) {
 				case "j":
 					setFocusedIndex((i) => Math.min(i + 1, files.length - 1));
@@ -92,8 +116,61 @@ export default function App() {
 					setFocusedIndex((i) => Math.max(i - 1, 0));
 					break;
 				case "o":
-					if (files[focusedIndex]) {
-						void toggleFile(files[focusedIndex].path);
+				case "Enter":
+				case "l":
+					// Expand/toggle file
+					if (focusedFile) {
+						void toggleFile(focusedFile.path);
+					}
+					break;
+				case "h":
+					// Collapse file
+					if (focusedFile && expandedFiles.has(focusedFile.path)) {
+						setExpandedFiles((prev) => {
+							const next = new Set(prev);
+							next.delete(focusedFile.path);
+							return next;
+						});
+					}
+					break;
+				case "G":
+					// Go to last file
+					if (files.length > 0) {
+						setFocusedIndex(files.length - 1);
+					}
+					break;
+				case "d":
+					// Ctrl+d - half page down
+					if (e.ctrlKey) {
+						e.preventDefault();
+						setFocusedIndex((i) => Math.min(i + HALF_PAGE_SIZE, files.length - 1));
+					}
+					break;
+				case "u":
+					// Ctrl+u - half page up, or unstage
+					if (e.ctrlKey) {
+						e.preventDefault();
+						setFocusedIndex((i) => Math.max(i - HALF_PAGE_SIZE, 0));
+					} else if (focusedFile && mode === "staged") {
+						void unstageFile(focusedFile.path);
+					}
+					break;
+				case "v":
+					// Toggle viewed
+					if (focusedFile) {
+						void toggleViewed(focusedFile.path, focusedFile.viewed);
+					}
+					break;
+				case "s":
+					// Stage file
+					if (focusedFile && mode === "working") {
+						void stageFile(focusedFile.path);
+					}
+					break;
+				case "x":
+					// Discard with confirmation
+					if (focusedFile && (mode === "working" || mode === "staged")) {
+						setConfirmDiscard(focusedFile.path);
 					}
 					break;
 				case "1":
@@ -120,7 +197,7 @@ export default function App() {
 		return () => {
 			window.removeEventListener("keydown", handleKey);
 		};
-	}, [files, focusedIndex, toggleFile, setMode]);
+	}, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode]);
 
 	const getCommentsForFile = (path: string) => (comments ?? []).filter((c) => c.file_path === path);
 
@@ -367,29 +444,29 @@ export default function App() {
 							e.stopPropagation();
 						}}
 					>
-						<h3>Keyboard Shortcuts</h3>
+						<h3>Navigation</h3>
 						<ul>
-							<li>
-								<kbd>j</kbd> Next file
-							</li>
-							<li>
-								<kbd>k</kbd> Previous file
-							</li>
-							<li>
-								<kbd>o</kbd> Toggle file
-							</li>
-							<li>
-								<kbd>1</kbd> Branch mode
-							</li>
-							<li>
-								<kbd>2</kbd> Working mode
-							</li>
-							<li>
-								<kbd>3</kbd> Staged mode
-							</li>
-							<li>
-								<kbd>?</kbd> Show shortcuts
-							</li>
+							<li><kbd>j</kbd> / <kbd>k</kbd> Next / previous file</li>
+							<li><kbd>gg</kbd> First file</li>
+							<li><kbd>G</kbd> Last file</li>
+							<li><kbd>Ctrl+d</kbd> / <kbd>Ctrl+u</kbd> Half-page down / up</li>
+							<li><kbd>l</kbd> / <kbd>Enter</kbd> Expand file</li>
+							<li><kbd>h</kbd> Collapse file</li>
+							<li><kbd>o</kbd> Toggle file</li>
+						</ul>
+						<h3>Actions</h3>
+						<ul>
+							<li><kbd>v</kbd> Toggle reviewed</li>
+							<li><kbd>s</kbd> Stage file</li>
+							<li><kbd>u</kbd> Unstage file</li>
+							<li><kbd>x</kbd> Discard changes</li>
+						</ul>
+						<h3>Modes</h3>
+						<ul>
+							<li><kbd>1</kbd> Branch mode</li>
+							<li><kbd>2</kbd> Working mode</li>
+							<li><kbd>3</kbd> Staged mode</li>
+							<li><kbd>?</kbd> Toggle shortcuts</li>
 						</ul>
 					</div>
 				</div>
