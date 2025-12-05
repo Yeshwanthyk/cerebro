@@ -36,3 +36,10 @@ issues.md
 
 # Plan file (temporary)
 PLAN.md
+
+# Debug logs
+cerebro-debug.log
+
+# SQLite temp files
+*.db-shm
+*.db-wal

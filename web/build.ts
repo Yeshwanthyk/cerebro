@@ -87,4 +87,34 @@ if (existsSync(imagesDir)) {
   await cp(imagesDir, path.join(outdir, "images"), { recursive: true });
 }
 
+// Fix HTML to point to correct entry bundle
+// Bun bundler bug: HTML sometimes points to wrong chunk
+const htmlPath = path.join(outdir, "index.html");
+let html = await Bun.file(htmlPath).text();
+
+// Find the main bundle (largest JS file with "index-" prefix that imports React)
+const jsFiles = [...new Bun.Glob("index-*.js").scanSync(outdir)];
+let mainBundle = "";
+let maxSize = 0;
+for (const file of jsFiles) {
+  const fullPath = path.join(outdir, file);
+  const content = await Bun.file(fullPath).text();
+  const size = content.length;
+  // Main bundle has React and is the largest
+  if (size > maxSize && content.includes("createRoot")) {
+    maxSize = size;
+    mainBundle = file;
+  }
+}
+
+if (mainBundle) {
+  // Replace the script src with the correct bundle
+  const scriptMatch = html.match(/src="\.\/index-[^"]+\.js"/);
+  if (scriptMatch && !scriptMatch[0].includes(mainBundle)) {
+    console.log(`🔧 Fixing HTML script reference: ${scriptMatch[0]} → src="./${mainBundle}"`);
+    html = html.replace(/src="\.\/index-[^"]+\.js"/, `src="./${mainBundle}"`);
+    await Bun.write(htmlPath, html);
+  }
+}
+
 console.log(`\n✅ Build completed in ${(end - start).toFixed(2)}ms\n`);

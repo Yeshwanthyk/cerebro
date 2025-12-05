@@ -37,30 +37,48 @@ program
 program
   .command("start")
   .description("Start the Cerebro server")
-  .argument("[path]", "Repository path (defaults to current directory)")
+  .argument("[path]", "Repository path (optional, use repo picker if not provided)")
   .option("-p, --port <number>", "Port to run on", "3030")
   .option("-o, --open", "Open browser after starting")
   .action(async (path: string | undefined, options: { port: string; open?: boolean }) => {
-    const repoPath = resolve(path || process.cwd());
     const port = parseInt(options.port, 10);
 
-    // Validate git repo
-    if (!(await isGitRepo(repoPath))) {
-      console.error(`Error: ${repoPath} is not a git repository`);
-      process.exit(1);
+    // If path provided, validate and set as current repo
+    if (path) {
+      const repoPath = resolve(path);
+      
+      if (!(await isGitRepo(repoPath))) {
+        console.error(`Error: ${repoPath} is not a git repository`);
+        process.exit(1);
+      }
+
+      // Add/get repo
+      const git = getGitManager(repoPath);
+      const baseBranch = await git.getDefaultBranch();
+      const name = getRepoName(repoPath);
+      const repo = await state.addRepo(repoPath, name, baseBranch);
+
+      // Set as current
+      await state.setCurrentRepo(repo.id);
+
+      console.log(`Starting Cerebro for ${name} (${repoPath})`);
+      console.log(`Base branch: ${baseBranch}`);
+    } else {
+      // No path - check if cwd is a git repo
+      const cwd = process.cwd();
+      if (await isGitRepo(cwd)) {
+        const git = getGitManager(cwd);
+        const baseBranch = await git.getDefaultBranch();
+        const name = getRepoName(cwd);
+        const repo = await state.addRepo(cwd, name, baseBranch);
+        await state.setCurrentRepo(repo.id);
+        console.log(`Starting Cerebro for ${name} (${cwd})`);
+      } else {
+        // Start without a repo - UI will show repo picker
+        console.log("Starting Cerebro (no repository selected)");
+        console.log("Use the web UI to add and select a repository");
+      }
     }
-
-    // Add/get repo
-    const git = getGitManager(repoPath);
-    const baseBranch = await git.getDefaultBranch();
-    const name = getRepoName(repoPath);
-    const repo = await state.addRepo(repoPath, name, baseBranch);
-
-    // Set as current
-    await state.setCurrentRepo(repo.id);
-
-    console.log(`Starting Cerebro for ${name} (${repoPath})`);
-    console.log(`Base branch: ${baseBranch}`);
 
     // Start server
     await startServer({ port });
