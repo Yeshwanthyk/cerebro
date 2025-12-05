@@ -18,7 +18,7 @@ export interface FileDiff {
 }
 
 // Diff response from API
-export type DiffMode = "branch" | "working" | "staged";
+export type DiffMode = "branch" | "working";
 
 export interface DiffResponse {
   files: FileDiff[];

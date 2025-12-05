@@ -21,7 +21,7 @@ export interface DiffResponse {
 	commit: string;
 	repo_path: string;
 	remote_url?: string;
-	mode: "branch" | "working" | "staged";
+	mode: "branch" | "working";
 	base_branch: string;
 }
 
