@@ -33,9 +33,9 @@ Cerebro is a Git diff review tool built with Bun and React, with a native macOS 
    - Vite for development, embedded in production binary
 
 6. **macOS App** (`mac/`)
-   - SwiftUI menu bar application
-   - Manages Bun server process
-   - WebView for UI display
+   - AppKit menu bar application (not SwiftUI)
+   - Manages Bun server process via `ServerManager`
+   - WKWebView for UI display
    - CLI installer
 
 7. **MCP Integration** (`src/mcp/`)
@@ -48,34 +48,33 @@ Cerebro is a Git diff review tool built with Bun and React, with a native macOS 
 cerebro/
 ├── src/                      # Bun application source
 │   ├── index.ts              # Main entry point
-│   ├── server/
-│   │   ├── index.ts          # Bun.serve() setup
-│   │   └── routes/           # API route handlers
-│   ├── cli/
-│   │   ├── index.ts          # CLI entry point
-│   │   └── commands/         # Command implementations
+│   ├── cli/                  # CLI commands
 │   ├── git/                  # Git operations
+│   ├── server/               # HTTP server & routes
 │   ├── state/                # State persistence
-│   ├── mcp/                  # MCP server
 │   └── types/                # Shared types
 ├── web/                      # React frontend
 │   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── DiffView.tsx
-│   │   │   ├── FileCard.tsx
-│   │   │   └── RepoPicker.tsx
-│   │   ├── hooks/
-│   │   └── api/
-│   ├── build-executable.ts   # Single binary builder
-│   └── package.json
+│   │   ├── api/              # API client
+│   │   ├── components/       # React components
+│   │   ├── hooks/            # Custom hooks
+│   │   ├── fonts/            # Web fonts
+│   │   └── images/           # Static images
+│   ├── build.ts              # Vite build script
+│   └── index.html            # Entry HTML
 ├── mac/                      # macOS app
 │   ├── Sources/
-│   │   ├── CerebroApp.swift
+│   │   ├── CerebroApp.swift  # App entry & delegate
 │   │   └── CerebroKit/
-│   ├── scripts/
+│   │       ├── ServerManager.swift
+│   │       ├── WebViewController.swift
+│   │       ├── MenuManager.swift
+│   │       └── CLIInstaller.swift
+│   ├── Makefile              # Build commands
 │   └── Package.swift
-├── package.json              # Root package.json
+├── scripts/
+│   └── build-executable.ts   # Single binary builder
+├── package.json
 ├── tsconfig.json
 └── bunfig.toml
 ```
@@ -85,7 +84,6 @@ cerebro/
 ### Prerequisites
 
 - Bun 1.3.2+
-- Node.js 20+ (for some dev tools)
 - Xcode 15+ (for macOS app)
 
 ### Building
@@ -93,6 +91,7 @@ cerebro/
 ```bash
 # Install dependencies
 bun install
+cd web && bun install
 
 # Development mode (hot reload)
 bun run dev
@@ -101,7 +100,7 @@ bun run dev
 bun run build
 
 # Build macOS app
-cd mac && ./scripts/build.sh
+cd mac && make release
 ```
 
 ### Testing
@@ -116,8 +115,11 @@ bun test
 # Start dev server
 bun run dev
 
+# Or run CLI directly
+bun src/index.ts start
+
 # Or start production build
-./dist/cerebro start
+./dist-exe/cerebro start
 
 # Web UI available at http://localhost:3030
 ```
@@ -139,6 +141,7 @@ bun run dev
 - `GET /api/repos` - List repositories
 - `POST /api/repos` - Add repository
 - `DELETE /api/repos/:id` - Remove repository
+- `GET /api/health` - Health check endpoint
 
 ### Comments & Notes
 
@@ -191,37 +194,44 @@ const status = await git.status();
 
 ## Single Binary Build
 
-The `build-executable.ts` script:
-1. Builds React app with Vite
+The `scripts/build-executable.ts` script:
+1. Builds React app via `web/build.ts`
 2. Reads all dist files and encodes as base64
 3. Generates embedded server code
 4. Uses `bun build --compile` to create single binary
 
 ```bash
-bun run build:exe
-# Output: dist/cerebro (single executable)
+bun run build
+# Output: dist-exe/cerebro (single executable)
 ```
 
 ## macOS App Architecture
 
 ### ServerManager
 
-- Locates bundled `cerebro-server` binary
+- Locates bundled `cerebro` binary (or dev/system paths)
 - Spawns process with proper environment
-- Health check polling every 2 seconds
+- Health check polling every 2 seconds via `/api/health`
 - Auto-restart on crash (max 3 attempts)
+- Uses os.log for logging (Console.app)
 
 ### CLIInstaller
 
 - Copies bundled binary to `~/.local/bin/cerebro`
 - No sudo required (user-writable directory)
-- Version checking and update prompts
 
 ### WebViewController
 
 - WKWebView loading `http://localhost:PORT`
-- JavaScript bridge for native features
-- Navigation handling
+- JavaScript bridge for native features:
+  - `cerebroBridge.openInFinder(path)` - Reveal in Finder
+  - `cerebroBridge.openTerminal(path)` - Open iTerm/Terminal
+  - `cerebroBridge.showNotification(title, body)` - System notification
+
+### MenuManager
+
+- Menu bar icon and dropdown
+- Open window, install CLI, quit actions
 
 ## AI Agent Best Practices
 
@@ -231,7 +241,7 @@ When modifying this codebase:
 2. **Type safety** - All code is TypeScript, maintain strict types
 3. **State consistency** - Always use state management modules, don't access files directly
 4. **Error handling** - Git operations can fail, handle gracefully
-5. **XDG compliance** - Use `~/.config/cerebro/` for config, `~/.local/share/cerebro/` for data
+5. **XDG compliance** - Use `~/.config/cerebro/` for config
 6. **No sudo** - CLI installer uses user-writable paths
 7. **MCP schema sync** - When modifying MCP tools, update both implementation and schema
 
@@ -242,7 +252,7 @@ When modifying this codebase:
 - `commander` - CLI framework
 - `react` - Frontend UI
 - `@pierre/precision-diffs` - Diff rendering
-- `vite` - Frontend build tool
+- `vite` - Frontend dev server
 
 ## Performance Considerations
 
@@ -256,4 +266,3 @@ When modifying this codebase:
 - Server only listens on `127.0.0.1` (localhost)
 - No authentication (local-only tool)
 - No remote data transmission
-- macOS app sandboxed (optional for distribution)
