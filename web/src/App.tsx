@@ -390,10 +390,7 @@ export default function App() {
 						onAdd={handleAddRepo}
 						onRemove={handleRemoveRepo}
 					/>
-					<span className="branch">{diff?.branch}</span>
-					<span className="commit">{diff?.commit.slice(0, 7)}</span>
-				</div>
-				<div className="header-right">
+					<div className="header-separator" />
 					<div className="mode-switcher">
 						<button
 							type="button"
@@ -410,6 +407,10 @@ export default function App() {
 							Working
 						</button>
 					</div>
+					<span className="branch">{diff?.branch}</span>
+					<span className="commit">{diff?.commit.slice(0, 7)}</span>
+				</div>
+				<div className="header-right">
 					<div 
 						className="branch-selector" 
 						onClick={(e) => e.stopPropagation()}

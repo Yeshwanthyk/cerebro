@@ -102,6 +102,13 @@ body {
   gap: 12px;
 }
 
+.header-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
 .branch {
   font-family: var(--font-mono);
   font-size: 13px;
