@@ -2,14 +2,9 @@
  * State management using SQLite
  * Stores repos, viewed files, comments, and notes
  */
-import { homedir } from "os";
 import { join } from "path";
 import type { Comment, Config, Note, ReposState, Repository } from "../types";
-import { getDb, generateId, closeDb } from "./db";
-
-// Config file path (keep as JSON for simple settings)
-const CONFIG_DIR = join(homedir(), ".config", "cerebro");
-const CONFIG_FILE = join(CONFIG_DIR, "config.json");
+import { getDb, getConfigDir, generateId, closeDb } from "./db";
 
 // Re-export closeDb for cleanup
 export { closeDb };
@@ -19,7 +14,8 @@ export { closeDb };
 // ============================================================================
 
 export async function getConfig(): Promise<Config> {
-  const file = Bun.file(CONFIG_FILE);
+  const configFile = join(getConfigDir(), "config.json");
+  const file = Bun.file(configFile);
   if (await file.exists()) {
     try {
       return await file.json();
@@ -31,7 +27,8 @@ export async function getConfig(): Promise<Config> {
 }
 
 export async function saveConfig(config: Config): Promise<void> {
-  await Bun.write(CONFIG_FILE, JSON.stringify(config, null, 2));
+  const configFile = join(getConfigDir(), "config.json");
+  await Bun.write(configFile, JSON.stringify(config, null, 2));
 }
 
 // ============================================================================

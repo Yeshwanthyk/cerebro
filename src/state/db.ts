@@ -7,28 +7,41 @@ import { homedir } from "os";
 import { join, resolve } from "path";
 import { mkdirSync, existsSync } from "fs";
 
-// Database location: ~/.config/cerebro/cerebro.db
-const CONFIG_DIR = process.env["CEREBRO_CONFIG_DIR"] ? resolve(process.env["CEREBRO_CONFIG_DIR"]) : join(homedir(), ".config", "cerebro");
-const DB_PATH = join(CONFIG_DIR, "cerebro.db");
-
-// Ensure config directory exists
-function ensureConfigDir(): void {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
-  }
-}
-
 // Singleton database instance
 let db: Database | null = null;
+let currentDbPath: string | null = null;
+
+/**
+ * Get the config directory path (reads env var at runtime for testability)
+ */
+export function getConfigDir(): string {
+  return process.env["CEREBRO_CONFIG_DIR"]
+    ? resolve(process.env["CEREBRO_CONFIG_DIR"])
+    : join(homedir(), ".config", "cerebro");
+}
 
 /**
  * Get or create the database connection
  */
 export function getDb(): Database {
+  const configDir = getConfigDir();
+  const dbPath = join(configDir, "cerebro.db");
+
+  // If db exists but path changed (e.g., env var changed), close and reopen
+  if (db && currentDbPath !== dbPath) {
+    db.close();
+    db = null;
+  }
+
   if (db) return db;
 
-  ensureConfigDir();
-  db = new Database(DB_PATH);
+  // Ensure config directory exists
+  if (!existsSync(configDir)) {
+    mkdirSync(configDir, { recursive: true });
+  }
+
+  db = new Database(dbPath);
+  currentDbPath = dbPath;
   db.exec("PRAGMA journal_mode = WAL"); // Better concurrent access
   db.exec("PRAGMA foreign_keys = ON");
   initSchema();
