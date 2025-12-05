@@ -46,6 +46,8 @@ export default function App() {
 	const [focusedIndex, setFocusedIndex] = useState(0);
 	const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
 	const [showShortcuts, setShowShortcuts] = useState(false);
+	const [showCommitModal, setShowCommitModal] = useState(false);
+	const [commitMessage, setCommitMessage] = useState("");
 	const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
 	const [activeComment, setActiveComment] = useState<{
 		filePath: string;
@@ -66,7 +68,17 @@ export default function App() {
 		return () => document.removeEventListener("click", handleClickOutside);
 	}, [showBranchPicker]);
 
-	const files = useMemo(() => diff?.files ?? [], [diff?.files]);
+	const files = useMemo(() => {
+		const raw = diff?.files ?? [];
+		return [...raw].sort((a, b) => {
+			// Staged files first (in working mode)
+			if (a.staged !== b.staged) {
+				return a.staged ? -1 : 1;
+			}
+			// Then sort by path (groups directories together)
+			return a.path.localeCompare(b.path);
+		});
+	}, [diff?.files]);
 
 	const toggleFile = useCallback(
 		async (path: string) => {
@@ -217,9 +229,16 @@ export default function App() {
 					e.preventDefault();
 					setDiffStyle((s) => (s === "split" ? "unified" : "split"));
 					break;
+				case "c":
+					e.preventDefault();
+					if (mode === "working" && files.some((f) => f.staged)) {
+						setShowCommitModal(true);
+					}
+					break;
 				case "Escape":
 					e.preventDefault();
 					setShowShortcuts(false);
+					setShowCommitModal(false);
 					setConfirmDiscard(null);
 					setActiveComment(null);
 					break;
@@ -284,13 +303,12 @@ export default function App() {
 		}
 	};
 
-	const handleCommit = async () => {
-		const message = window.prompt("Commit message:");
-		if (!message) {
-			return;
-		}
+	const handleCommit = async (message: string) => {
+		if (!message.trim()) return;
 		try {
 			await commit(message);
+			setCommitMessage("");
+			setShowCommitModal(false);
 		} catch {
 			// ignore
 		}
@@ -451,7 +469,7 @@ export default function App() {
 					<button
 						type="button"
 						className="commit-btn"
-						onClick={() => void handleCommit()}
+						onClick={() => setShowCommitModal(true)}
 						disabled={mode !== "working" || !files.some((f) => f.staged)}
 					>
 						Commit
@@ -548,6 +566,7 @@ export default function App() {
 							<li><kbd>s</kbd> Stage file</li>
 							<li><kbd>u</kbd> Unstage file</li>
 							<li><kbd>x</kbd> Discard changes</li>
+							<li><kbd>c</kbd> Commit staged</li>
 						</ul>
 						<h3>Modes</h3>
 						<ul>
@@ -645,6 +664,73 @@ export default function App() {
 								}}
 							>
 								Comment
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showCommitModal && (
+				<div
+					className="modal-overlay"
+					onClick={() => setShowCommitModal(false)}
+				>
+					<div
+						className="commit-modal"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<h3>Commit Changes</h3>
+						<div className="commit-files">
+							<span className="commit-files-count">
+								{files.filter((f) => f.staged).length} file{files.filter((f) => f.staged).length !== 1 ? "s" : ""} staged
+							</span>
+							<ul>
+								{files.filter((f) => f.staged).map((f) => (
+									<li key={f.path}>
+										<span className={`status-dot ${f.status}`} />
+										{f.path}
+									</li>
+								))}
+							</ul>
+						</div>
+						<div className="commit-type-buttons">
+							{["feat", "fix", "chore", "docs", "refactor", "test"].map((type) => (
+								<button
+									key={type}
+									type="button"
+									className={commitMessage.startsWith(`${type}: `) ? "active" : ""}
+									onClick={() => {
+										const msg = commitMessage.replace(/^(feat|fix|chore|docs|refactor|test):\s*/, "");
+										setCommitMessage(`${type}: ${msg}`);
+									}}
+								>
+									{type}
+								</button>
+							))}
+						</div>
+						<textarea
+							placeholder="Commit message..."
+							value={commitMessage}
+							onChange={(e) => setCommitMessage(e.target.value)}
+							autoFocus
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+									void handleCommit(commitMessage);
+								}
+							}}
+						/>
+						<div className="modal-actions">
+							<span className="modal-hint">⌘+Enter to commit</span>
+							<button type="button" onClick={() => setShowCommitModal(false)}>
+								Cancel
+							</button>
+							<button
+								type="button"
+								className="primary"
+								disabled={!commitMessage.trim()}
+								onClick={() => void handleCommit(commitMessage)}
+							>
+								Commit
 							</button>
 						</div>
 					</div>

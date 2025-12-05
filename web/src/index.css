@@ -650,6 +650,131 @@ body {
   resize: vertical;
 }
 
+/* Commit modal */
+.commit-modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+}
+
+.commit-modal h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.commit-files {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 16px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.commit-files-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.commit-files ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.commit-files li {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-modified);
+}
+
+.status-dot.added { background: var(--color-added); }
+.status-dot.deleted { background: var(--color-deleted); }
+.status-dot.renamed { background: var(--color-renamed); }
+
+.commit-type-buttons {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.commit-type-buttons button {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.commit-type-buttons button:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-secondary);
+}
+
+.commit-type-buttons button.active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.commit-modal textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  resize: vertical;
+}
+
+.commit-modal textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.modal-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-right: auto;
+}
+
+.modal-actions button.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: white;
+}
+
+.modal-actions button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Precision Diffs styling - larger, more readable */
 .file-diff {
   --pjs-font-family: "Berkeley Mono", "JetBrains Mono", monospace;
