@@ -93,22 +93,16 @@ function createGitManager(repoPath: string, git: SimpleGit): GitManager {
 
     async getDiff(options: { baseBranch: string; mode: DiffMode }): Promise<DiffResponse> {
       const { baseBranch, mode } = options;
-      const branch = await this.getCurrentBranch();
-      const commit = await this.getCurrentCommit();
-      const remoteUrl = await this.getRemoteUrl();
-
-      let files: FileDiff[] = [];
-
-      if (mode === "working") {
-        // Unstaged changes only
-        files = await getWorkingDiff(git, repoPath);
-      } else if (mode === "staged") {
-        // Staged changes only
-        files = await getStagedDiff(git, repoPath);
-      } else {
-        // Branch diff against base
-        files = await getBranchDiff(git, repoPath, baseBranch);
-      }
+      
+      // Run metadata fetches in parallel with diff
+      const [branch, commit, remoteUrl, files] = await Promise.all([
+        this.getCurrentBranch(),
+        this.getCurrentCommit(),
+        this.getRemoteUrl(),
+        mode === "working"
+          ? getWorkingDiff(git, repoPath)
+          : getBranchDiff(git, repoPath, baseBranch),
+      ]);
 
       return {
         files,
@@ -128,8 +122,6 @@ function createGitManager(repoPath: string, git: SimpleGit): GitManager {
         return getSingleBranchFileDiff(git, baseBranch, filePath);
       } else if (mode === "working") {
         return getSingleWorkingFileDiff(git, repoPath, filePath);
-      } else if (mode === "staged") {
-        return getSingleStagedFileDiff(git, filePath);
       }
       return null;
     },
@@ -168,15 +160,47 @@ function createGitManager(repoPath: string, git: SimpleGit): GitManager {
   };
 }
 
-// Get unstaged working directory changes
+// Get all working directory changes (both staged and unstaged)
 async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<FileDiff[]> {
   const status = await git.status();
   const files: FileDiff[] = [];
+  const processedPaths = new Set<string>();
 
-  // Modified files (not staged)
+  // Staged files first
+  const stagedDiff = await git.diff(["--cached", "--name-status"]);
+  if (stagedDiff.trim()) {
+    for (const line of stagedDiff.trim().split("\n")) {
+      const [statusCode, ...pathParts] = line.split("\t");
+      const filePath = pathParts.join("\t");
+      if (!filePath) continue;
+
+      processedPaths.add(filePath);
+      const patchDiff = await git.diff(["--cached", "--", filePath]);
+      const { additions, deletions } = countChanges(patchDiff);
+
+      let fileStatus: FileDiff["status"] = "modified";
+      if (statusCode.startsWith("A")) fileStatus = "added";
+      else if (statusCode.startsWith("D")) fileStatus = "deleted";
+      else if (statusCode.startsWith("R")) fileStatus = "renamed";
+
+      files.push({
+        path: filePath,
+        status: fileStatus,
+        additions,
+        deletions,
+        patch: patchDiff,
+        viewed: false,
+        staged: true,
+        old_file: fileStatus !== "added" ? await getFileContents(git, "HEAD", filePath) : undefined,
+        new_file: fileStatus !== "deleted" ? await getStagedFileContents(git, filePath) : undefined,
+      });
+    }
+  }
+
+  // Unstaged modified files
   for (const filePath of status.modified) {
-    // Skip if also in staged
-    if (status.staged.includes(filePath)) continue;
+    if (processedPaths.has(filePath)) continue;
+    processedPaths.add(filePath);
 
     const diff = await git.diff([filePath]);
     const { additions, deletions } = countChanges(diff);
@@ -188,6 +212,7 @@ async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<FileDif
       deletions,
       patch: diff,
       viewed: false,
+      staged: false,
       old_file: await getFileContents(git, "HEAD", filePath),
       new_file: await getWorkingFileContents(repoPath, filePath),
     });
@@ -195,6 +220,9 @@ async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<FileDif
 
   // Untracked files
   for (const filePath of status.not_added) {
+    if (processedPaths.has(filePath)) continue;
+    processedPaths.add(filePath);
+
     const contents = await getWorkingFileContents(repoPath, filePath);
     const lines = contents?.contents.split("\n").length || 0;
 
@@ -205,13 +233,15 @@ async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<FileDif
       deletions: 0,
       patch: createAddPatch(filePath, contents?.contents || ""),
       viewed: false,
+      staged: false,
       new_file: contents,
     });
   }
 
-  // Deleted files (not staged)
+  // Unstaged deleted files
   for (const filePath of status.deleted) {
-    if (status.staged.includes(filePath)) continue;
+    if (processedPaths.has(filePath)) continue;
+    processedPaths.add(filePath);
 
     const oldContents = await getFileContents(git, "HEAD", filePath);
     const lines = oldContents?.contents.split("\n").length || 0;
@@ -223,46 +253,8 @@ async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<FileDif
       deletions: lines,
       patch: createDeletePatch(filePath, oldContents?.contents || ""),
       viewed: false,
+      staged: false,
       old_file: oldContents,
-    });
-  }
-
-  return files;
-}
-
-// Get staged changes
-async function getStagedDiff(git: SimpleGit, _repoPath: string): Promise<FileDiff[]> {
-  const diff = await git.diff(["--cached", "--name-status"]);
-  const files: FileDiff[] = [];
-
-  if (!diff.trim()) {
-    return files;
-  }
-
-  const lines = diff.trim().split("\n");
-  for (const line of lines) {
-    const [status, ...pathParts] = line.split("\t");
-    const filePath = pathParts.join("\t");
-
-    if (!filePath) continue;
-
-    const patchDiff = await git.diff(["--cached", "--", filePath]);
-    const { additions, deletions } = countChanges(patchDiff);
-
-    let fileStatus: FileDiff["status"] = "modified";
-    if (status.startsWith("A")) fileStatus = "added";
-    else if (status.startsWith("D")) fileStatus = "deleted";
-    else if (status.startsWith("R")) fileStatus = "renamed";
-
-    files.push({
-      path: filePath,
-      status: fileStatus,
-      additions,
-      deletions,
-      patch: patchDiff,
-      viewed: false,
-      old_file: fileStatus !== "added" ? await getFileContents(git, "HEAD", filePath) : undefined,
-      new_file: fileStatus !== "deleted" ? await getStagedFileContents(git, filePath) : undefined,
     });
   }
 
@@ -370,10 +362,35 @@ async function getSingleBranchFileDiff(git: SimpleGit, baseBranch: string, fileP
 }
 
 async function getSingleWorkingFileDiff(git: SimpleGit, repoPath: string, filePath: string): Promise<FileDiff | null> {
+  // Check if file is staged first
+  const stagedDiff = await git.diff(["--cached", "--name-status", "--", filePath]);
+  if (stagedDiff.trim()) {
+    const [statusCode] = stagedDiff.trim().split("\t");
+    const patchDiff = await git.diff(["--cached", "--", filePath]);
+    const { additions, deletions } = countChanges(patchDiff);
+
+    let fileStatus: FileDiff["status"] = "modified";
+    if (statusCode.startsWith("A")) fileStatus = "added";
+    else if (statusCode.startsWith("D")) fileStatus = "deleted";
+    else if (statusCode.startsWith("R")) fileStatus = "renamed";
+
+    return {
+      path: filePath,
+      status: fileStatus,
+      additions,
+      deletions,
+      patch: patchDiff,
+      viewed: false,
+      staged: true,
+      old_file: fileStatus !== "added" ? await getFileContents(git, "HEAD", filePath) : undefined,
+      new_file: fileStatus !== "deleted" ? await getStagedFileContents(git, filePath) : undefined,
+    };
+  }
+
   const status = await git.status();
 
-  // Check if modified
-  if (status.modified.includes(filePath) && !status.staged.includes(filePath)) {
+  // Check if modified (unstaged)
+  if (status.modified.includes(filePath)) {
     const diff = await git.diff([filePath]);
     const { additions, deletions } = countChanges(diff);
     return {
@@ -383,6 +400,7 @@ async function getSingleWorkingFileDiff(git: SimpleGit, repoPath: string, filePa
       deletions,
       patch: diff,
       viewed: false,
+      staged: false,
       old_file: await getFileContents(git, "HEAD", filePath),
       new_file: await getWorkingFileContents(repoPath, filePath),
     };
@@ -399,12 +417,13 @@ async function getSingleWorkingFileDiff(git: SimpleGit, repoPath: string, filePa
       deletions: 0,
       patch: createAddPatch(filePath, contents?.contents || ""),
       viewed: false,
+      staged: false,
       new_file: contents,
     };
   }
 
-  // Check if deleted
-  if (status.deleted.includes(filePath) && !status.staged.includes(filePath)) {
+  // Check if deleted (unstaged)
+  if (status.deleted.includes(filePath)) {
     const oldContents = await getFileContents(git, "HEAD", filePath);
     const lines = oldContents?.contents.split("\n").length || 0;
     return {
@@ -414,39 +433,12 @@ async function getSingleWorkingFileDiff(git: SimpleGit, repoPath: string, filePa
       deletions: lines,
       patch: createDeletePatch(filePath, oldContents?.contents || ""),
       viewed: false,
+      staged: false,
       old_file: oldContents,
     };
   }
 
   return null;
-}
-
-async function getSingleStagedFileDiff(git: SimpleGit, filePath: string): Promise<FileDiff | null> {
-  try {
-    const patchDiff = await git.diff(["--cached", "--", filePath]);
-    if (!patchDiff.trim()) return null;
-
-    const { additions, deletions } = countChanges(patchDiff);
-
-    const nameStatus = await git.diff(["--cached", "--name-status", "--", filePath]);
-    let fileStatus: FileDiff["status"] = "modified";
-    if (nameStatus.startsWith("A")) fileStatus = "added";
-    else if (nameStatus.startsWith("D")) fileStatus = "deleted";
-    else if (nameStatus.startsWith("R")) fileStatus = "renamed";
-
-    return {
-      path: filePath,
-      status: fileStatus,
-      additions,
-      deletions,
-      patch: patchDiff,
-      viewed: false,
-      old_file: fileStatus !== "added" ? await getFileContents(git, "HEAD", filePath) : undefined,
-      new_file: fileStatus !== "deleted" ? await getStagedFileContents(git, filePath) : undefined,
-    };
-  } catch {
-    return null;
-  }
 }
 
 // Helper functions
