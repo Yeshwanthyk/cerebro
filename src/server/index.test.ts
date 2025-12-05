@@ -153,8 +153,10 @@ describe("repos API", () => {
       body: {},
     });
     expect(res.status).toBe(400);
-    const data = (await res.json()) as ApiResponse;
-    expect(data.error).toBe("Path is required");
+    const data = (await res.json()) as ApiResponse<{ details?: Array<{ path: string; message: string }> }>;
+    expect(data.error).toBe("Validation failed");
+    expect(data.details).toBeDefined();
+    expect(data.details!.length).toBeGreaterThan(0);
   });
 
   it("POST /api/repos returns existing for duplicate path", async () => {
@@ -521,8 +523,10 @@ describe("git operations API", () => {
       body: {},
     });
     expect(res.status).toBe(400);
-    const data = (await res.json()) as ApiResponse;
-    expect(data.error).toBe("Commit message is required");
+    const data = (await res.json()) as ApiResponse<{ details?: Array<{ path: string; message: string }> }>;
+    expect(data.error).toBe("Validation failed");
+    expect(data.details).toBeDefined();
+    expect(data.details!.length).toBeGreaterThan(0);
   });
 
   it("POST /api/stage stages a modified file", async () => {

@@ -2,6 +2,16 @@ import type { Server } from "bun";
 import { getGitManager, isGitRepo, getRepoName } from "../git";
 import * as state from "../state";
 import type { DiffMode, Repository } from "../types";
+import {
+  AddRepoRequestSchema,
+  SetCurrentRepoRequestSchema,
+  FilePathRequestSchema,
+  CommitRequestSchema,
+  AddCommentRequestSchema,
+  ResolveCommentRequestSchema,
+  DismissNoteRequestSchema,
+  validateRequest,
+} from "../schemas";
 
 export interface ServerOptions {
   port: number;
@@ -234,15 +244,12 @@ async function handleGetRepos(): Promise<Response> {
 
 async function handleAddRepo(req: Request): Promise<Response> {
   const body = await req.json();
-  const { path: inputPath } = body as { path: string };
-
-  if (!inputPath) {
-    return Response.json({ error: "Path is required" }, { status: 400 });
-  }
+  const validation = validateRequest(AddRepoRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   // Resolve to absolute path
   const { resolve } = await import("path");
-  const absolutePath = resolve(inputPath);
+  const absolutePath = resolve(validation.data.path);
 
   // Validate it's a git repo
   if (!(await isGitRepo(absolutePath))) {
@@ -267,9 +274,10 @@ async function handleRemoveRepo(id: string): Promise<Response> {
 
 async function handleSetCurrentRepo(req: Request): Promise<Response> {
   const body = await req.json();
-  const { id } = body as { id: string };
+  const validation = validateRequest(SetCurrentRepoRequestSchema, body);
+  if (!validation.success) return validation.response;
 
-  const success = await state.setCurrentRepo(id);
+  const success = await state.setCurrentRepo(validation.data.id);
   if (!success) {
     return Response.json({ error: "Repository not found" }, { status: 404 });
   }
@@ -332,13 +340,14 @@ async function handleMarkViewed(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { file_path } = body as { file_path: string };
+  const validation = validateRequest(FilePathRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   const git = getGitManager(repo.path);
   const branch = await git.getCurrentBranch();
   const commit = await git.getCurrentCommit();
 
-  await state.setFileViewed(repo.id, branch, commit, file_path, true);
+  await state.setFileViewed(repo.id, branch, commit, validation.data.file_path, true);
   return Response.json({ success: true });
 }
 
@@ -349,13 +358,14 @@ async function handleUnmarkViewed(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { file_path } = body as { file_path: string };
+  const validation = validateRequest(FilePathRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   const git = getGitManager(repo.path);
   const branch = await git.getCurrentBranch();
   const commit = await git.getCurrentCommit();
 
-  await state.setFileViewed(repo.id, branch, commit, file_path, false);
+  await state.setFileViewed(repo.id, branch, commit, validation.data.file_path, false);
   return Response.json({ success: true });
 }
 
@@ -367,10 +377,11 @@ async function handleStage(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { file_path } = body as { file_path: string };
+  const validation = validateRequest(FilePathRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   const git = getGitManager(repo.path);
-  await git.stageFile(file_path);
+  await git.stageFile(validation.data.file_path);
   return Response.json({ success: true });
 }
 
@@ -381,10 +392,11 @@ async function handleUnstage(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { file_path } = body as { file_path: string };
+  const validation = validateRequest(FilePathRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   const git = getGitManager(repo.path);
-  await git.unstageFile(file_path);
+  await git.unstageFile(validation.data.file_path);
   return Response.json({ success: true });
 }
 
@@ -395,10 +407,11 @@ async function handleDiscard(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { file_path } = body as { file_path: string };
+  const validation = validateRequest(FilePathRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   const git = getGitManager(repo.path);
-  await git.discardFile(file_path);
+  await git.discardFile(validation.data.file_path);
   return Response.json({ success: true });
 }
 
@@ -409,14 +422,11 @@ async function handleCommit(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { message } = body as { message: string };
-
-  if (!message) {
-    return Response.json({ error: "Commit message is required" }, { status: 400 });
-  }
+  const validation = validateRequest(CommitRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   const git = getGitManager(repo.path);
-  const commitHash = await git.commit(message);
+  const commitHash = await git.commit(validation.data.message);
   return Response.json({ commit: commitHash });
 }
 
@@ -441,20 +451,17 @@ async function handleAddComment(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { file_path, line_number, text } = body as {
-    file_path: string;
-    line_number?: number;
-    text: string;
-  };
+  const validation = validateRequest(AddCommentRequestSchema, body);
+  if (!validation.success) return validation.response;
 
   const git = getGitManager(repo.path);
   const branch = await git.getCurrentBranch();
   const commit = await git.getCurrentCommit();
 
   const comment = await state.addComment(repo.id, {
-    file_path,
-    line_number,
-    text,
+    file_path: validation.data.file_path,
+    line_number: validation.data.line_number,
+    text: validation.data.text,
     branch,
     commit,
   });
@@ -469,9 +476,10 @@ async function handleResolveComment(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { comment_id, resolved_by } = body as { comment_id: string; resolved_by?: string };
+  const validation = validateRequest(ResolveCommentRequestSchema, body);
+  if (!validation.success) return validation.response;
 
-  const success = await state.resolveComment(repo.id, comment_id, resolved_by || "user");
+  const success = await state.resolveComment(repo.id, validation.data.comment_id, validation.data.resolved_by || "user");
   if (!success) {
     return Response.json({ error: "Comment not found" }, { status: 404 });
   }
@@ -499,9 +507,10 @@ async function handleDismissNote(req: Request, url: URL): Promise<Response> {
   }
 
   const body = await req.json();
-  const { note_id, dismissed_by } = body as { note_id: string; dismissed_by?: string };
+  const validation = validateRequest(DismissNoteRequestSchema, body);
+  if (!validation.success) return validation.response;
 
-  const success = await state.dismissNote(repo.id, note_id, dismissed_by || "user");
+  const success = await state.dismissNote(repo.id, validation.data.note_id, validation.data.dismissed_by || "user");
   if (!success) {
     return Response.json({ error: "Note not found" }, { status: 404 });
   }
