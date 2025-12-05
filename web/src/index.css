@@ -654,55 +654,52 @@ body {
 .commit-modal {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 24px;
-  max-width: 500px;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 480px;
   width: 90%;
 }
 
 .commit-modal h3 {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   margin-bottom: 16px;
+  color: var(--color-text-secondary);
 }
 
 .commit-files {
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 12px;
-  margin-bottom: 16px;
-  max-height: 150px;
-  overflow-y: auto;
+  margin-bottom: 12px;
 }
 
 .commit-files-count {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-muted);
-  display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .commit-files ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .commit-files li {
   font-size: 12px;
   font-family: var(--font-mono);
-  color: var(--color-text-secondary);
-  padding: 2px 0;
+  color: var(--color-text-muted);
+  padding: 3px 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  flex-shrink: 0;
   background: var(--color-modified);
 }
 
@@ -712,50 +709,51 @@ body {
 
 .commit-type-buttons {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 12px;
-  flex-wrap: wrap;
 }
 
 .commit-type-buttons button {
-  padding: 4px 10px;
+  padding: 4px 8px;
   font-size: 11px;
   font-family: var(--font-mono);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: transparent;
+  border: none;
+  border-radius: 4px;
+  background: var(--color-bg-tertiary);
   color: var(--color-text-muted);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .commit-type-buttons button:hover {
-  border-color: var(--color-text-secondary);
   color: var(--color-text-secondary);
 }
 
 .commit-type-buttons button.active {
-  border-color: var(--color-accent);
   color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
 }
 
 .commit-modal textarea {
   width: 100%;
-  min-height: 80px;
-  padding: 12px;
+  min-height: 70px;
+  padding: 10px 12px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 6px;
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
-  font-size: 14px;
-  resize: vertical;
+  font-size: 13px;
+  resize: none;
 }
 
 .commit-modal textarea:focus {
   outline: none;
-  border-color: var(--color-accent);
+  border-color: var(--color-border);
+}
+
+.commit-modal .modal-actions {
+  margin-top: 14px;
 }
 
 .modal-hint {
@@ -765,13 +763,17 @@ body {
 }
 
 .modal-actions button.primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: var(--color-added);
+  border: none;
   color: white;
 }
 
+.modal-actions button.primary:hover {
+  background: color-mix(in srgb, var(--color-added) 85%, white);
+}
+
 .modal-actions button.primary:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
