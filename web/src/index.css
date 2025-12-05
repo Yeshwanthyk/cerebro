@@ -1037,15 +1037,23 @@ body {
 /* Branch selector */
 .branch-selector {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compare-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 .branch-selector-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-tertiary);
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
   color: var(--color-text-secondary);
   font-size: 12px;
   font-family: var(--font-mono);
@@ -1055,19 +1063,19 @@ body {
 }
 
 .branch-selector-btn:hover {
-  border-color: var(--color-accent);
+  background: var(--color-bg-tertiary);
   color: var(--color-text);
 }
 
 .dropdown-arrow {
   font-size: 8px;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .branch-picker {
   position: absolute;
   top: 100%;
-  right: 0;
+  left: 0;
   margin-top: 4px;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);

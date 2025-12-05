@@ -407,41 +407,47 @@ export default function App() {
 							Working
 						</button>
 					</div>
-					<span className="branch">{diff?.branch}</span>
-					<span className="commit">{diff?.commit.slice(0, 7)}</span>
+					{mode === "branch" && (
+						<div 
+							className="branch-selector" 
+							onClick={(e) => e.stopPropagation()}
+						>
+							<span className="compare-label">vs</span>
+							<button
+								type="button"
+								className="branch-selector-btn"
+								onClick={() => setShowBranchPicker(!showBranchPicker)}
+							>
+								{compareBranch || currentRepoData?.baseBranch || "main"}
+								<span className="dropdown-arrow">▼</span>
+							</button>
+							{showBranchPicker && (
+								<div className="branch-picker">
+									{branches.map((b) => (
+										<button
+											key={b}
+											type="button"
+											className={b === (compareBranch || currentRepoData?.baseBranch) ? "active" : ""}
+											onClick={() => {
+												setCompareBranch(b);
+												setShowBranchPicker(false);
+											}}
+										>
+											{b}
+										</button>
+									))}
+								</div>
+							)}
+						</div>
+					)}
+					{mode === "working" && (
+						<>
+							<span className="branch">{diff?.branch}</span>
+							<span className="commit">{diff?.commit.slice(0, 7)}</span>
+						</>
+					)}
 				</div>
 				<div className="header-right">
-					<div 
-						className="branch-selector" 
-						onClick={(e) => e.stopPropagation()}
-						style={{ visibility: mode === "branch" ? "visible" : "hidden" }}
-					>
-						<button
-							type="button"
-							className="branch-selector-btn"
-							onClick={() => setShowBranchPicker(!showBranchPicker)}
-						>
-							vs {compareBranch || currentRepoData?.baseBranch || "main"}
-							<span className="dropdown-arrow">▼</span>
-						</button>
-						{showBranchPicker && (
-							<div className="branch-picker">
-								{branches.map((b) => (
-									<button
-										key={b}
-										type="button"
-										className={b === (compareBranch || currentRepoData?.baseBranch) ? "active" : ""}
-										onClick={() => {
-											setCompareBranch(b);
-											setShowBranchPicker(false);
-										}}
-									>
-										{b}
-									</button>
-								))}
-							</div>
-						)}
-					</div>
 					<button
 						type="button"
 						className="commit-btn"
