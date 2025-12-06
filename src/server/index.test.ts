@@ -273,16 +273,27 @@ describe("diff API", () => {
     expect(data.mode).toBe("working");
   });
 
-  it("GET /api/diff supports mode=staged", async () => {
+  it("GET /api/diff working mode includes staged files with flag", async () => {
     await api("/api/repos", {
       method: "POST",
       body: { path: testRepoPath },
     });
 
-    const res = await api("/api/diff?mode=staged");
+    // Stage a file
+    writeFileSync(join(testRepoPath, "staged-test.txt"), "staged\n");
+    await Bun.$`git -C ${testRepoPath} add staged-test.txt`.quiet();
+
+    const res = await api("/api/diff?mode=working");
     expect(res.status).toBe(200);
     const data = (await res.json()) as DiffResponse;
-    expect(data.mode).toBe("staged");
+    expect(data.mode).toBe("working");
+    
+    const stagedFile = data.files.find((f) => f.path === "staged-test.txt");
+    expect(stagedFile?.staged).toBe(true);
+
+    // Cleanup
+    await Bun.$`git -C ${testRepoPath} reset HEAD staged-test.txt`.quiet();
+    await Bun.$`rm ${join(testRepoPath, "staged-test.txt")}`.quiet();
   });
 
   it("GET /api/file-diff returns 400 without repo", async () => {

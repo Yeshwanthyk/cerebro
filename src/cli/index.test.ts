@@ -1,10 +1,7 @@
 import { mkdtempSync, rmSync, mkdirSync } from "fs";
 import { tmpdir } from "os";
-import { join, resolve } from "path";
+import { join } from "path";
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from "bun:test";
-
-// Local imports are done after HOME is set in beforeAll to ensure the state DB points to the temp directory.
-import type { Repository } from "../types";
 
 let originalHome: string | undefined;
 let originalCwd: string;

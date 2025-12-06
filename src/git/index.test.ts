@@ -128,25 +128,32 @@ describe("diff operations", () => {
     });
   });
 
-  describe("staged mode", () => {
-    it("getDiff returns empty when nothing staged", async () => {
-      const diff = await git.getDiff({ baseBranch: "main", mode: "staged" });
-      expect(diff.files).toEqual([]);
-      expect(diff.mode).toBe("staged");
-    });
-
-    it("getDiff returns staged files", async () => {
+  describe("staged files in working mode", () => {
+    it("getDiff returns staged files with staged flag", async () => {
       writeFileSync(join(testRepoPath, "staged.txt"), "staged content\n");
       await Bun.$`git -C ${testRepoPath} add staged.txt`.quiet();
 
-      const diff = await git.getDiff({ baseBranch: "main", mode: "staged" });
+      const diff = await git.getDiff({ baseBranch: "main", mode: "working" });
       expect(diff.files.length).toBe(1);
-      expect(diff.files[0].path).toBe("staged.txt");
-      expect(diff.files[0].status).toBe("added");
+      expect(diff.files[0]?.path).toBe("staged.txt");
+      expect(diff.files[0]?.status).toBe("added");
+      expect(diff.files[0]?.staged).toBe(true);
 
       // Cleanup
       await Bun.$`git -C ${testRepoPath} reset HEAD staged.txt`.quiet();
       await Bun.$`rm ${join(testRepoPath, "staged.txt")}`.quiet();
+    });
+
+    it("getDiff returns unstaged files with staged=false", async () => {
+      writeFileSync(join(testRepoPath, "README.md"), "# Modified unstaged\n");
+
+      const diff = await git.getDiff({ baseBranch: "main", mode: "working" });
+      const file = diff.files.find((f) => f.path === "README.md");
+      expect(file).toBeDefined();
+      expect(file?.staged).toBe(false);
+
+      // Cleanup
+      await Bun.$`git -C ${testRepoPath} checkout -- README.md`.quiet();
     });
   });
 });

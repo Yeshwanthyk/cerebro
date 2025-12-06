@@ -155,27 +155,24 @@ describe("full workflows", () => {
       body: { file_path: "README.md" },
     });
 
-    // 4. Verify it moved to staged
-    const stagedRes = await api("/api/diff?mode=staged");
-    const stagedDiff = (await stagedRes.json()) as DiffResponse;
-    expect(stagedDiff.files.some((f) => f.path === "README.md")).toBe(true);
-
-    // 5. Working should now be empty for this file
+    // 4. Verify it shows as staged in working mode
     const workingRes2 = await api("/api/diff?mode=working");
     const workingDiff2 = (await workingRes2.json()) as DiffResponse;
-    expect(workingDiff2.files.some((f) => f.path === "README.md")).toBe(false);
+    const stagedFile = workingDiff2.files.find((f) => f.path === "README.md");
+    expect(stagedFile).toBeDefined();
+    expect(stagedFile?.staged).toBe(true);
 
-    // 6. Commit
+    // 5. Commit
     const commitRes = await api("/api/commit", {
       method: "POST",
       body: { message: "Update README" },
     });
     expect(commitRes.status).toBe(200);
 
-    // 7. Staged should now be empty
-    const stagedRes2 = await api("/api/diff?mode=staged");
-    const stagedDiff2 = (await stagedRes2.json()) as DiffResponse;
-    expect(stagedDiff2.files.length).toBe(0);
+    // 6. Working should now be empty (no changes)
+    const workingRes3 = await api("/api/diff?mode=working");
+    const workingDiff3 = (await workingRes3.json()) as DiffResponse;
+    expect(workingDiff3.files.length).toBe(0);
   });
 
   it("multi-repo workflow: switch between repos", async () => {
@@ -446,7 +443,7 @@ describe("error recovery", () => {
     });
 
     // All modes should return empty arrays gracefully
-    for (const mode of ["branch", "working", "staged"]) {
+    for (const mode of ["branch", "working"]) {
       const res = await api(`/api/diff?mode=${mode}`);
       expect(res.status).toBe(200);
       const diff = (await res.json()) as DiffResponse;

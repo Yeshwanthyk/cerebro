@@ -60,7 +60,7 @@ function createGitManager(repoPath: string, git: SimpleGit): GitManager {
         const remote = await git.remote(["show", "origin"]);
         if (remote) {
           const match = remote.match(/HEAD branch:\s*(\S+)/);
-          if (match) {
+          if (match?.[1]) {
             return match[1];
           }
         }
@@ -172,7 +172,7 @@ async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<FileDif
     for (const line of stagedDiff.trim().split("\n")) {
       const [statusCode, ...pathParts] = line.split("\t");
       const filePath = pathParts.join("\t");
-      if (!filePath) continue;
+      if (!filePath || !statusCode) continue;
 
       processedPaths.add(filePath);
       const patchDiff = await git.diff(["--cached", "--", filePath]);
@@ -280,7 +280,7 @@ async function getBranchDiff(git: SimpleGit, _repoPath: string, baseBranch: stri
     for (const line of numstat.trim().split("\n")) {
       const [add, del, ...pathParts] = line.split("\t");
       const filePath = pathParts.join("\t");
-      if (filePath) {
+      if (filePath && add !== undefined && del !== undefined) {
         statsMap.set(filePath, {
           additions: add === "-" ? 0 : parseInt(add, 10),
           deletions: del === "-" ? 0 : parseInt(del, 10),
@@ -302,7 +302,7 @@ async function getBranchDiff(git: SimpleGit, _repoPath: string, baseBranch: stri
     const [status, ...pathParts] = line.split("\t");
     const filePath = pathParts.join("\t");
 
-    if (!filePath) continue;
+    if (!filePath || !status) continue;
 
     let fileStatus: FileDiff["status"] = "modified";
     if (status.startsWith("A")) fileStatus = "added";
@@ -370,9 +370,9 @@ async function getSingleWorkingFileDiff(git: SimpleGit, repoPath: string, filePa
     const { additions, deletions } = countChanges(patchDiff);
 
     let fileStatus: FileDiff["status"] = "modified";
-    if (statusCode.startsWith("A")) fileStatus = "added";
-    else if (statusCode.startsWith("D")) fileStatus = "deleted";
-    else if (statusCode.startsWith("R")) fileStatus = "renamed";
+    if (statusCode?.startsWith("A")) fileStatus = "added";
+    else if (statusCode?.startsWith("D")) fileStatus = "deleted";
+    else if (statusCode?.startsWith("R")) fileStatus = "renamed";
 
     return {
       path: filePath,
