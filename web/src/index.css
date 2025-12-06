@@ -478,7 +478,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error {
@@ -708,9 +710,15 @@ body {
   top: -1px;
 }
 
-.status-dot.added { background: var(--color-added); }
-.status-dot.deleted { background: var(--color-deleted); }
-.status-dot.renamed { background: var(--color-renamed); }
+.status-dot.added {
+  background: var(--color-added);
+}
+.status-dot.deleted {
+  background: var(--color-deleted);
+}
+.status-dot.renamed {
+  background: var(--color-renamed);
+}
 
 .commit-type-buttons {
   display: flex;
@@ -932,7 +940,9 @@ body {
   font-family: var(--font-mono);
   font-size: 14px;
   margin-bottom: 16px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .repo-path-input:focus {
@@ -976,8 +986,13 @@ body {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .welcome h1 {

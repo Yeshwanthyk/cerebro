@@ -1,11 +1,12 @@
 /**
  * Unified development server - ONE server for both API and frontend with HMR
  */
+
+import { resolve } from "node:path";
 import { serve } from "bun";
-import { resolve } from "path";
 
 // Import backend modules
-import { getGitManager, isGitRepo, getRepoName } from "../../src/git";
+import { getGitManager, getRepoName, isGitRepo } from "../../src/git";
 import * as state from "../../src/state";
 import type { DiffMode, Repository } from "../../src/types";
 
@@ -48,28 +49,34 @@ async function handleApi(req: Request): Promise<Response> {
   try {
     const response = await routeApi(req, url, path, method);
     const headers = new Headers(response.headers);
-    Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, v));
+    for (const [k, v] of Object.entries(corsHeaders)) {
+      headers.set(k, v);
+    }
     return new Response(response.body, { status: response.status, headers });
   } catch (error) {
     console.error("API error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: corsHeaders },
     );
   }
 }
 
 // API routing
-async function routeApi(req: Request, url: URL, path: string, method: string): Promise<Response> {
+function routeApi(req: Request, url: URL, path: string, method: string): Promise<Response> {
   // Health check
   if (path === "/api/health") {
-    return Response.json({ status: "ok" });
+    return Promise.resolve(Response.json({ status: "ok" }));
   }
 
   // Repository routes
   if (path === "/api/repos") {
-    if (method === "GET") return handleGetRepos();
-    if (method === "POST") return handleAddRepo(req);
+    if (method === "GET") {
+      return handleGetRepos();
+    }
+    if (method === "POST") {
+      return handleAddRepo(req);
+    }
   }
 
   if (path.startsWith("/api/repos/") && method === "DELETE") {
@@ -118,8 +125,12 @@ async function routeApi(req: Request, url: URL, path: string, method: string): P
 
   // Comments
   if (path === "/api/comments") {
-    if (method === "GET") return handleGetComments(url);
-    if (method === "POST") return handleAddComment(req, url);
+    if (method === "GET") {
+      return handleGetComments(url);
+    }
+    if (method === "POST") {
+      return handleAddComment(req, url);
+    }
   }
 
   if (path === "/api/comments/resolve" && method === "POST") {
@@ -135,7 +146,7 @@ async function routeApi(req: Request, url: URL, path: string, method: string): P
     return handleDismissNote(req, url);
   }
 
-  return Response.json({ error: "Not found" }, { status: 404 });
+  return Promise.resolve(Response.json({ error: "Not found" }, { status: 404 }));
 }
 
 // Helper to get current repo
@@ -186,7 +197,7 @@ async function handleGetRepos(): Promise<Response> {
 
   // Clear currentRepo if it was removed
   let currentRepo: string | undefined = reposState.currentRepo;
-  if (currentRepo && !validRepos.some(r => r.id === currentRepo)) {
+  if (currentRepo && !validRepos.some((r) => r.id === currentRepo)) {
     await state.setCurrentRepo(null);
     currentRepo = undefined;
   }
@@ -196,13 +207,17 @@ async function handleGetRepos(): Promise<Response> {
 
 async function handleAddRepo(req: Request): Promise<Response> {
   const { path: inputPath } = (await req.json()) as { path: string };
-  if (!inputPath) return Response.json({ error: "Path is required" }, { status: 400 });
+  if (!inputPath) {
+    return Response.json({ error: "Path is required" }, { status: 400 });
+  }
 
   // Resolve to absolute path
-  const { resolve } = await import("path");
+  const { resolve } = await import("node:path");
   const absolutePath = resolve(inputPath);
 
-  if (!(await isGitRepo(absolutePath))) return Response.json({ error: "Not a git repository" }, { status: 400 });
+  if (!(await isGitRepo(absolutePath))) {
+    return Response.json({ error: "Not a git repository" }, { status: 400 });
+  }
 
   const git = getGitManager(absolutePath);
   const baseBranch = await git.getDefaultBranch();
@@ -211,24 +226,33 @@ async function handleAddRepo(req: Request): Promise<Response> {
   return Response.json(repo);
 }
 
-async function handleRemoveRepo(id: string): Promise<Response> {
+async function handleRemoveRepo(id: string | undefined): Promise<Response> {
+  if (!id) {
+    return Response.json({ error: "Repository ID required" }, { status: 400 });
+  }
   const success = await state.removeRepo(id);
-  if (!success) return Response.json({ error: "Repository not found" }, { status: 404 });
+  if (!success) {
+    return Response.json({ error: "Repository not found" }, { status: 404 });
+  }
   return Response.json({ success: true });
 }
 
 async function handleSetCurrentRepo(req: Request): Promise<Response> {
   const { id } = (await req.json()) as { id: string };
   const success = await state.setCurrentRepo(id);
-  if (!success) return Response.json({ error: "Repository not found" }, { status: 404 });
+  if (!success) {
+    return Response.json({ error: "Repository not found" }, { status: 404 });
+  }
   return Response.json({ success: true });
 }
 
 async function handleGetDiff(url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
-  const mode = (url.searchParams.get("mode") || "branch") as DiffMode;
+  const mode = (url.searchParams.get("mode") ?? "branch") as DiffMode;
   const git = getGitManager(repo.path);
   const diff = await git.getDiff({ baseBranch: repo.baseBranch, mode });
 
@@ -236,29 +260,37 @@ async function handleGetDiff(url: URL): Promise<Response> {
   const commit = await git.getCurrentCommit();
   const viewed = await state.getViewedFiles(repo.id, branch, commit);
 
-  diff.files = diff.files.map((f) => ({ ...f, viewed: viewed[f.path] || false }));
+  diff.files = diff.files.map((f) => ({ ...f, viewed: viewed[f.path] ?? false }));
   return Response.json(diff);
 }
 
 async function handleGetFileDiff(url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const filePath = url.searchParams.get("file");
-  if (!filePath) return Response.json({ error: "File path required" }, { status: 400 });
+  if (!filePath) {
+    return Response.json({ error: "File path required" }, { status: 400 });
+  }
 
-  const mode = (url.searchParams.get("mode") || "branch") as DiffMode;
+  const mode = (url.searchParams.get("mode") ?? "branch") as DiffMode;
   const git = getGitManager(repo.path);
   const fileDiff = await git.getFileDiff({ baseBranch: repo.baseBranch, mode, filePath });
 
-  if (!fileDiff) return Response.json({ error: "File not found" }, { status: 404 });
+  if (!fileDiff) {
+    return Response.json({ error: "File not found" }, { status: 404 });
+  }
 
   return Response.json(fileDiff);
 }
 
 async function handleMarkViewed(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const { file_path } = (await req.json()) as { file_path: string };
   const git = getGitManager(repo.path);
@@ -271,7 +303,9 @@ async function handleMarkViewed(req: Request, url: URL): Promise<Response> {
 
 async function handleUnmarkViewed(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const { file_path } = (await req.json()) as { file_path: string };
   const git = getGitManager(repo.path);
@@ -284,7 +318,9 @@ async function handleUnmarkViewed(req: Request, url: URL): Promise<Response> {
 
 async function handleStage(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const { file_path } = (await req.json()) as { file_path: string };
   const git = getGitManager(repo.path);
@@ -294,7 +330,9 @@ async function handleStage(req: Request, url: URL): Promise<Response> {
 
 async function handleUnstage(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const { file_path } = (await req.json()) as { file_path: string };
   const git = getGitManager(repo.path);
@@ -304,7 +342,9 @@ async function handleUnstage(req: Request, url: URL): Promise<Response> {
 
 async function handleDiscard(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const { file_path } = (await req.json()) as { file_path: string };
   const git = getGitManager(repo.path);
@@ -314,10 +354,14 @@ async function handleDiscard(req: Request, url: URL): Promise<Response> {
 
 async function handleCommit(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const { message } = (await req.json()) as { message: string };
-  if (!message) return Response.json({ error: "Commit message is required" }, { status: 400 });
+  if (!message) {
+    return Response.json({ error: "Commit message is required" }, { status: 400 });
+  }
 
   const git = getGitManager(repo.path);
   const commitHash = await git.commit(message);
@@ -326,7 +370,9 @@ async function handleCommit(req: Request, url: URL): Promise<Response> {
 
 async function handleGetComments(url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const git = getGitManager(repo.path);
   const branch = await git.getCurrentBranch();
@@ -336,7 +382,9 @@ async function handleGetComments(url: URL): Promise<Response> {
 
 async function handleAddComment(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const { file_path, line_number, text } = (await req.json()) as {
     file_path: string;
@@ -354,17 +402,26 @@ async function handleAddComment(req: Request, url: URL): Promise<Response> {
 
 async function handleResolveComment(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
-  const { comment_id, resolved_by } = (await req.json()) as { comment_id: string; resolved_by?: string };
-  const success = await state.resolveComment(repo.id, comment_id, resolved_by || "user");
-  if (!success) return Response.json({ error: "Comment not found" }, { status: 404 });
+  const { comment_id, resolved_by } = (await req.json()) as {
+    comment_id: string;
+    resolved_by?: string;
+  };
+  const success = await state.resolveComment(repo.id, comment_id, resolved_by ?? "user");
+  if (!success) {
+    return Response.json({ error: "Comment not found" }, { status: 404 });
+  }
   return Response.json({ success: true });
 }
 
 async function handleGetNotes(url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
   const git = getGitManager(repo.path);
   const branch = await git.getCurrentBranch();
@@ -374,11 +431,18 @@ async function handleGetNotes(url: URL): Promise<Response> {
 
 async function handleDismissNote(req: Request, url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) return Response.json({ error: "No repository selected" }, { status: 400 });
+  if (!repo) {
+    return Response.json({ error: "No repository selected" }, { status: 400 });
+  }
 
-  const { note_id, dismissed_by } = (await req.json()) as { note_id: string; dismissed_by?: string };
-  const success = await state.dismissNote(repo.id, note_id, dismissed_by || "user");
-  if (!success) return Response.json({ error: "Note not found" }, { status: 404 });
+  const { note_id, dismissed_by } = (await req.json()) as {
+    note_id: string;
+    dismissed_by?: string;
+  };
+  const success = await state.dismissNote(repo.id, note_id, dismissed_by ?? "user");
+  if (!success) {
+    return Response.json({ error: "Note not found" }, { status: 404 });
+  }
   return Response.json({ success: true });
 }
 
@@ -394,7 +458,9 @@ serve({
     "/images/*": async (req) => {
       const url = new URL(req.url);
       const file = Bun.file(`./web/src${url.pathname}`);
-      if (await file.exists()) return new Response(file);
+      if (await file.exists()) {
+        return new Response(file);
+      }
       return new Response("Not found", { status: 404 });
     },
     "/*": index,

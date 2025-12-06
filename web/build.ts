@@ -4,9 +4,9 @@
  * Uses Bun's native bundler - no Vite, no webpack, just Bun.
  */
 
-import { existsSync } from "fs";
-import { rm, cp } from "fs/promises";
-import path from "path";
+import { existsSync } from "node:fs";
+import { cp, rm } from "node:fs/promises";
+import path from "node:path";
 
 console.log("\n🚀 Building Cerebro Web with Bun...\n");
 
