@@ -17,6 +17,95 @@ cp -r mac/release/Cerebro.app /Applications/
 cp dist-exe/cerebro ~/.local/bin/cerebro
 ```
 
+---
+
+## Linting & Type Safety
+
+### Stack: oxlint + ESLint + TypeScript
+
+| Tool | Purpose | Config |
+|------|---------|--------|
+| **oxlint** | Fast linting (non-type-aware rules) | `web/oxlint.json` |
+| **ESLint** | Type-aware rules (requires TSC) | `web/eslint.config.mjs` |
+| **TypeScript** | Strict type checking | `web/tsconfig.json` |
+
+### Commands
+
+```bash
+cd web
+
+# Fast lint (oxlint only)
+bun run lint
+
+# Type-aware lint (ESLint only)  
+bun run lint:types
+
+# Full lint (oxlint + ESLint)
+bun run lint:all
+
+# Auto-fix
+bun run lint:fix
+
+# Full check (lint + typecheck)
+bun run check
+```
+
+### Key Rules Enforced
+
+#### Type Safety (ESLint - requires type info)
+| Rule | Purpose |
+|------|---------|
+| `no-unsafe-argument` | Block `any` values as function arguments |
+| `no-unsafe-assignment` | Block `any` assignments |
+| `no-unsafe-call` | Block calling `any` typed values |
+| `no-unsafe-member-access` | Block member access on `any` |
+| `no-unsafe-return` | Block returning `any` from typed functions |
+| `no-floating-promises` | Require promise handling (await/catch/void) |
+| `no-misused-promises` | Block promises in conditionals |
+| `prefer-nullish-coalescing` | Prefer `??` over `\|\|` |
+
+#### Code Quality (oxlint - fast)
+| Rule | Purpose |
+|------|---------|
+| `no-explicit-any` | Ban `any`; use `unknown` |
+| `no-var` | Ban `var` entirely |
+| `prefer-const` | Flag never-reassigned `let` |
+| `eqeqeq` | Require `===` and `!==` |
+| `no-await-in-loop` | Prompt `Promise.all()` over sequential awaits |
+| `require-await` | Async functions must await |
+| `consistent-type-imports` | Use `import type` for types |
+| `rules-of-hooks` | React hooks rules |
+| `exhaustive-deps` | React useEffect dependencies |
+
+#### TypeScript Compiler
+```jsonc
+{
+  "strict": true,                    // Master strict flag
+  "noUncheckedIndexedAccess": true,  // Index access → T | undefined
+  "noUnusedLocals": true,
+  "noUnusedParameters": true
+}
+```
+
+### Fixing Common Issues
+
+```bash
+# Floating promise - add void or await
+void someAsyncFunction();
+await someAsyncFunction();
+
+# Nullish coalescing - use ?? instead of ||
+const value = foo ?? "default";  // not foo || "default"
+
+# Unsafe any - add type annotation or assertion
+const data = (await res.json()) as MyType;
+
+# == null check - use !== null explicitly  
+if (value !== null && value !== undefined) { }
+```
+
+---
+
 ## Architecture
 
 ### Core Components
@@ -36,14 +125,14 @@ cp dist-exe/cerebro ~/.local/bin/cerebro
    - Supports branch comparison and working directory changes
 
 4. **State Management** (`src/state/`)
-   - JSON-based persistence in `~/.config/cerebro/`
+   - SQLite-based persistence in `~/.config/cerebro/`
    - Multi-repo tracking
    - Per-repo comments and notes
 
 5. **React Frontend** (`web/`)
-   - React 18 with TypeScript
+   - React 19 with TypeScript
    - Uses `@pierre/precision-diffs` for diff rendering
-   - Vite for development, embedded in production binary
+   - Bun for bundling, embedded in production binary
 
 6. **macOS App** (`mac/`)
    - AppKit menu bar application (not SwiftUI)
@@ -67,6 +156,7 @@ cerebro/
 │   ├── git/                  # Git operations
 │   ├── server/               # HTTP server & routes
 │   ├── state/                # State persistence
+│   ├── schemas/              # Zod validation schemas
 │   └── types/                # Shared types
 ├── web/                      # React frontend
 │   ├── src/
@@ -75,7 +165,10 @@ cerebro/
 │   │   ├── hooks/            # Custom hooks
 │   │   ├── fonts/            # Web fonts
 │   │   └── images/           # Static images
-│   ├── build.ts              # Vite build script
+│   ├── build.ts              # Bun build script
+│   ├── oxlint.json           # oxlint config
+│   ├── eslint.config.mjs     # ESLint config (type-aware)
+│   ├── tsconfig.json         # TypeScript config
 │   └── index.html            # Entry HTML
 ├── mac/                      # macOS app
 │   ├── Sources/
@@ -143,7 +236,7 @@ bun src/index.ts start
 
 ### Diff & Files
 
-- `GET /api/diff?repo=<id>&mode=<branch|working|staged>` - Get diff files
+- `GET /api/diff?repo=<id>&mode=<branch|working>` - Get diff files
 - `POST /api/mark-viewed` - Mark file as reviewed
 - `POST /api/unmark-viewed` - Unmark file
 - `POST /api/stage` - Stage file
@@ -172,12 +265,9 @@ All state is stored in `~/.config/cerebro/`:
 
 ```
 ~/.config/cerebro/
-├── config.json           # Global configuration
-├── repos.json            # Registered repositories
+├── cerebro.db            # SQLite database
 └── repos/
     └── <repo-id>/
-        ├── comments.json # Per-repo comments
-        ├── notes.json    # Per-repo notes
         └── viewed.json   # Viewed files state
 ```
 
@@ -185,17 +275,19 @@ All state is stored in `~/.config/cerebro/`:
 
 ### Adding a New API Endpoint
 
-1. Add route handler in `src/server/routes/`
-2. Define request/response types in `src/types/`
-3. Update frontend API client in `web/src/api/`
-4. Add tests
+1. Add Zod schema in `src/schemas/`
+2. Add route handler in `src/server/routes/`
+3. Define request/response types in `src/types/`
+4. Update frontend API client in `web/src/api/`
+5. Add tests
 
 ### Adding State Persistence
 
 1. Define data structure in `src/types/`
-2. Add methods to appropriate state module in `src/state/`
-3. Use async file operations with Bun's native APIs
-4. Handle missing/corrupted files gracefully
+2. Add Zod schema for validation
+3. Add methods to appropriate state module in `src/state/`
+4. Use async file operations with Bun's native APIs
+5. Handle missing/corrupted files gracefully
 
 ### Working with Git Operations
 
@@ -252,26 +344,31 @@ bun run build
 
 When modifying this codebase:
 
-1. **Use Bun APIs** - Prefer `Bun.file()`, `Bun.write()`, `Bun.serve()` over Node.js equivalents
-2. **Type safety** - All code is TypeScript, maintain strict types
-3. **State consistency** - Always use state management modules, don't access files directly
-4. **Error handling** - Git operations can fail, handle gracefully
-5. **XDG compliance** - Use `~/.config/cerebro/` for config
-6. **No sudo** - CLI installer uses user-writable paths
+1. **Run lints before committing** - `cd web && bun run check`
+2. **Use Bun APIs** - Prefer `Bun.file()`, `Bun.write()`, `Bun.serve()` over Node.js equivalents
+3. **Type safety** - All code is TypeScript with strict mode, no `any`
+4. **Handle promises** - Always `await`, `void`, or `.catch()` promises
+5. **Use nullish coalescing** - Prefer `??` over `||` for defaults
+6. **State consistency** - Always use state management modules, don't access files directly
+7. **Error handling** - Git operations can fail, handle gracefully
+8. **XDG compliance** - Use `~/.config/cerebro/` for config
+9. **No sudo** - CLI installer uses user-writable paths
 
 ## Key Dependencies
 
 - `bun` - Runtime and bundler
 - `simple-git` - Git operations
 - `commander` - CLI framework
+- `zod` - Runtime validation
 - `react` - Frontend UI
 - `@pierre/precision-diffs` - Diff rendering
-- `vite` - Frontend dev server
+- `oxlint` - Fast linting
+- `eslint` + `@typescript-eslint` - Type-aware linting
 
 ## Performance Considerations
 
 - Diffs computed on-demand (consider caching for large repos)
-- State files loaded/saved synchronously (small files, acceptable)
+- State stored in SQLite (fast reads/writes)
 - Single binary embeds all assets (fast startup, no I/O for static files)
 - WebView shares system WebKit (low memory overhead)
 
