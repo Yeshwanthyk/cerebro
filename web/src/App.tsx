@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileCard } from "./components/FileCard";
+import { Icon } from "./components/Icon";
 import { Modal } from "./components/Modal";
 import { RepoPicker } from "./components/RepoPicker";
 import { useDiff } from "./hooks/useDiff";
@@ -38,6 +39,7 @@ export default function App() {
     discardFile,
     commit,
     loadFileDiff,
+    refresh,
   } = useDiff(currentRepo);
 
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
@@ -512,6 +514,14 @@ export default function App() {
             title="Toggle diff view"
           >
             {diffStyle === "split" ? "Split" : "Unified"}
+          </button>
+          <button
+            type="button"
+            className="view-toggle"
+            onClick={() => void refresh()}
+            title="Refresh"
+          >
+            <Icon name="refresh" size={14} />
           </button>
         </div>
       </header>
