@@ -85,7 +85,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
   // Reset compareBranch when repo changes
   useEffect(() => {
     setCompareBranch(null);
-  }, []);
+  }, [repoId]);
 
   const fetchData = useCallback(
     async (currentMode: DiffMode, currentCompareBranch: string | null, background = false) => {
@@ -135,16 +135,35 @@ export function useDiff(repoId?: string | null): UseDiffResult {
         const commentsData = commentsRes?.ok ? ((await commentsRes.json()) as Comment[]) : [];
         const notesData = notesRes?.ok ? ((await notesRes.json()) as Note[]) : [];
 
-        // Update cache
-        cacheRef.current.set(cacheKey, {
-          diff: diffData,
-          comments: commentsData,
-          notes: notesData,
-          timestamp: Date.now(),
+        // Merge with existing file data to preserve loaded old_file/new_file
+        setDiff((prevDiff) => {
+          const mergedDiff = {
+            ...diffData,
+            files: diffData.files.map((newFile) => {
+              const existingFile = prevDiff?.files.find((f) => f.path === newFile.path);
+              // Preserve old_file and new_file if they were already loaded
+              if (existingFile?.old_file || existingFile?.new_file) {
+                return {
+                  ...newFile,
+                  old_file: existingFile.old_file,
+                  new_file: existingFile.new_file,
+                };
+              }
+              return newFile;
+            }),
+          };
+
+          // Update cache with merged data
+          cacheRef.current.set(cacheKey, {
+            diff: mergedDiff,
+            comments: commentsData,
+            notes: notesData,
+            timestamp: Date.now(),
+          });
+
+          return mergedDiff;
         });
 
-        // Only update state if this is still the current mode
-        setDiff(diffData);
         setComments(commentsData);
         setNotes(notesData);
         setError(null);

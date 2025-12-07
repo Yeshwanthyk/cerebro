@@ -273,7 +273,8 @@ async function getBranchDiff(git: SimpleGit, _repoPath: string, baseBranch: stri
   }
 
   // Get numstat for additions/deletions counts (single git call)
-  const numstat = await git.diff([mergeBase, "--numstat"]);
+  // Compare mergeBase to HEAD explicitly to exclude working directory changes
+  const numstat = await git.diff([mergeBase, "HEAD", "--numstat"]);
   const statsMap = new Map<string, { additions: number; deletions: number }>();
 
   if (numstat.trim()) {
@@ -290,7 +291,7 @@ async function getBranchDiff(git: SimpleGit, _repoPath: string, baseBranch: stri
   }
 
   // Get name-status for file statuses (single git call)
-  const nameStatus = await git.diff([mergeBase, "--name-status"]);
+  const nameStatus = await git.diff([mergeBase, "HEAD", "--name-status"]);
   const files: FileDiff[] = [];
 
   if (!nameStatus.trim()) {
@@ -336,11 +337,12 @@ async function getSingleBranchFileDiff(git: SimpleGit, baseBranch: string, fileP
   }
 
   try {
-    const patchDiff = await git.diff([mergeBase, "--", filePath]);
+    // Compare mergeBase to HEAD explicitly to exclude working directory changes
+    const patchDiff = await git.diff([mergeBase, "HEAD", "--", filePath]);
     const { additions, deletions } = countChanges(patchDiff);
 
     // Determine status
-    const nameStatus = await git.diff([mergeBase, "--name-status", "--", filePath]);
+    const nameStatus = await git.diff([mergeBase, "HEAD", "--name-status", "--", filePath]);
     let fileStatus: FileDiff["status"] = "modified";
     if (nameStatus.startsWith("A")) fileStatus = "added";
     else if (nameStatus.startsWith("D")) fileStatus = "deleted";

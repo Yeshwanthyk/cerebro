@@ -43,6 +43,12 @@ export default function App() {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState(0);
+
+  // Clear expanded files when mode or compare branch changes (file list changes)
+  useEffect(() => {
+    setExpandedFiles(new Set());
+    setFocusedIndex(0);
+  }, [mode, compareBranch, currentRepo]);
   const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommitModal, setShowCommitModal] = useState(false);
