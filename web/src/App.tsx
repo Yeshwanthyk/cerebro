@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type Command, CommandPalette } from "./components/CommandPalette";
 import { FileCard } from "./components/FileCard";
 import { Icon } from "./components/Icon";
 import { Modal } from "./components/Modal";
@@ -62,6 +63,7 @@ export default function App() {
     content: string;
   } | null>(null);
   const [showBranchPicker, setShowBranchPicker] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   // For vim multi-key sequences (gg)
   const lastKeyRef = useRef<string | null>(null);
@@ -121,6 +123,13 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // CMD+K opens command palette (works even in inputs)
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setShowCommandPalette((s) => !s);
+        return;
+      }
+
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -275,6 +284,159 @@ export default function App() {
     (notes ?? []).filter(
       (n) => (n.file_path === path || n.file_path.endsWith(`/${path}`)) && !n.dismissed,
     );
+
+  // Command palette commands
+  const commands: Command[] = useMemo(() => {
+    const focusedFile = files[focusedIndex];
+    const stagedCount = files.filter((f) => f.staged).length;
+
+    return [
+      // File commands
+      ...files.map((file, index) => ({
+        id: `file-${file.path}`,
+        label: file.path,
+        category: "files" as const,
+        action: () => {
+          setFocusedIndex(index);
+          void toggleFile(file.path);
+        },
+      })),
+
+      // Actions
+      {
+        id: "toggle-viewed",
+        label: focusedFile?.viewed ? "Mark as unreviewed" : "Mark as reviewed",
+        shortcut: "v",
+        category: "actions" as const,
+        action: () => focusedFile && void toggleViewed(focusedFile.path, focusedFile.viewed),
+        disabled: !focusedFile,
+      },
+      {
+        id: "stage-file",
+        label: "Stage file",
+        shortcut: "s",
+        category: "actions" as const,
+        action: () => focusedFile && void stageFile(focusedFile.path),
+        disabled: !focusedFile || mode !== "working" || focusedFile.staged,
+      },
+      {
+        id: "unstage-file",
+        label: "Unstage file",
+        shortcut: "u",
+        category: "actions" as const,
+        action: () => focusedFile && void unstageFile(focusedFile.path),
+        disabled: !focusedFile || mode !== "working" || !focusedFile.staged,
+      },
+      {
+        id: "discard-file",
+        label: "Discard changes",
+        shortcut: "x",
+        category: "actions" as const,
+        action: () => focusedFile && setConfirmDiscard(focusedFile.path),
+        disabled: !focusedFile || mode !== "working",
+      },
+      {
+        id: "commit",
+        label: "Commit staged changes",
+        shortcut: "c",
+        category: "actions" as const,
+        action: () => setShowCommitModal(true),
+        disabled: mode !== "working" || stagedCount === 0,
+      },
+      {
+        id: "refresh",
+        label: "Refresh",
+        category: "actions" as const,
+        action: () => void refresh(),
+      },
+
+      // Navigation
+      {
+        id: "go-first",
+        label: "Go to first file",
+        shortcut: "gg",
+        category: "navigation" as const,
+        action: () => setFocusedIndex(0),
+        disabled: files.length === 0,
+      },
+      {
+        id: "go-last",
+        label: "Go to last file",
+        shortcut: "G",
+        category: "navigation" as const,
+        action: () => setFocusedIndex(files.length - 1),
+        disabled: files.length === 0,
+      },
+      {
+        id: "expand-file",
+        label: "Expand file",
+        shortcut: "l",
+        category: "navigation" as const,
+        action: () => focusedFile && void toggleFile(focusedFile.path),
+        disabled: !focusedFile || expandedFiles.has(focusedFile.path),
+      },
+      {
+        id: "collapse-file",
+        label: "Collapse file",
+        shortcut: "h",
+        category: "navigation" as const,
+        action: () => {
+          if (focusedFile && expandedFiles.has(focusedFile.path)) {
+            setExpandedFiles((prev) => {
+              const next = new Set(prev);
+              next.delete(focusedFile.path);
+              return next;
+            });
+          }
+        },
+        disabled: !focusedFile || !expandedFiles.has(focusedFile.path),
+      },
+
+      // Settings
+      {
+        id: "branch-mode",
+        label: "Switch to Branch mode",
+        shortcut: "1",
+        category: "settings" as const,
+        action: () => setMode("branch"),
+        disabled: mode === "branch",
+      },
+      {
+        id: "working-mode",
+        label: "Switch to Working mode",
+        shortcut: "2",
+        category: "settings" as const,
+        action: () => setMode("working"),
+        disabled: mode === "working",
+      },
+      {
+        id: "toggle-diff-style",
+        label: diffStyle === "split" ? "Switch to Unified view" : "Switch to Split view",
+        shortcut: "t",
+        category: "settings" as const,
+        action: () => setDiffStyle((s) => (s === "split" ? "unified" : "split")),
+      },
+      {
+        id: "show-shortcuts",
+        label: "Show keyboard shortcuts",
+        shortcut: "?",
+        category: "settings" as const,
+        action: () => setShowShortcuts(true),
+      },
+    ];
+  }, [
+    files,
+    focusedIndex,
+    mode,
+    diffStyle,
+    expandedFiles,
+    toggleFile,
+    toggleViewed,
+    stageFile,
+    unstageFile,
+    refresh,
+    setMode,
+  ]);
 
   const handleToggleViewed = async (path: string, viewed: boolean) => {
     try {
@@ -531,7 +693,7 @@ export default function App() {
           <span>
             <strong>{viewedCount}</strong> of {fileCount} files reviewed
           </span>
-          <span className="shortcut-hint">Press ? for shortcuts</span>
+          <span className="shortcut-hint">Press ⌘K for commands, ? for shortcuts</span>
           <div className="progress-bar">
             <div className="progress-fill" style={{ width: `${String(progressPercent)}%` }} />
           </div>
@@ -638,6 +800,10 @@ export default function App() {
             </li>
             <li>
               <kbd>?</kbd> Toggle shortcuts
+            </li>
+            <li>
+              <kbd>⌘</kbd>
+              <kbd>K</kbd> Command palette
             </li>
           </ul>
         </Modal>
@@ -777,6 +943,13 @@ export default function App() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {showCommandPalette && (
+        <CommandPalette
+          commands={commands}
+          onClose={() => setShowCommandPalette(false)}
+        />
       )}
     </div>
   );
