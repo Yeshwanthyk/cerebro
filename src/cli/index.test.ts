@@ -122,8 +122,6 @@ describe("comments CLI", () => {
       "comments",
       "resolve",
       comment.id,
-      "--repo",
-      repo.id,
     ]);
 
     expect(result.exitCode).toBe(0);
@@ -153,6 +151,38 @@ describe("comments CLI", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Check this logic");
     expect(result.stdout).toContain("src/bar.ts:10");
+  });
+
+  it("replies to a comment using parent context", async () => {
+    const repo = await state.addRepo("/tmp/test-repo5", "test-repo5", "main");
+    await state.setCurrentRepo(repo.id);
+
+    const parent = await state.addComment(repo.id, {
+      file_path: "/tmp/test-repo5/src/parent.ts",
+      line_number: 7,
+      text: "Parent comment",
+      branch: "feature/reply",
+      commit: "abc987",
+    });
+
+    const result = await runCli([
+      "comments",
+      "reply",
+      parent.id,
+      "Child reply text",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Added reply:");
+
+    const comments = await state.getComments(repo.id);
+    const reply = comments.find((c) => c.parent_id === parent.id);
+    expect(reply).toBeDefined();
+    expect(reply?.text).toBe("Child reply text");
+    expect(reply?.file_path).toBe("src/parent.ts");
+    expect(reply?.line_number).toBe(7);
+    expect(reply?.branch).toBe("feature/reply");
+    expect(reply?.commit).toBe("abc987");
   });
 });
 
@@ -255,8 +285,6 @@ describe("notes CLI", () => {
       "notes",
       "dismiss",
       note.id,
-      "--repo",
-      repo.id,
     ]);
 
     expect(result.exitCode).toBe(0);

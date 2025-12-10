@@ -231,7 +231,8 @@ commentsCmd
   .description("List comments for a repository")
   .option("-r, --repo <idOrPath>", "Repository ID or path (defaults to current directory)")
   .option("-b, --branch <branch>", "Filter by branch")
-  .action(async (options: { repo?: string; branch?: string }) => {
+  .option("--json", "Output as JSON for programmatic access")
+  .action(async (options: { repo?: string; branch?: string; json?: boolean }) => {
     let repo: Repository;
     try {
       repo = await resolveRepo(options.repo);
@@ -243,6 +244,11 @@ commentsCmd
 
     const comments = await state.getComments(repo.id, options.branch);
 
+    if (options.json) {
+      console.log(JSON.stringify(comments, null, 2));
+      return;
+    }
+
     if (comments.length === 0) {
       console.log("No comments found.");
       return;
@@ -253,12 +259,17 @@ commentsCmd
     for (const comment of comments) {
       const lineInfo = comment.line_number !== undefined ? `:${comment.line_number}` : "";
       const location = `${relative(repo.path, comment.file_path) || comment.file_path}${lineInfo}`;
-      const metaParts = [comment.branch && `branch ${comment.branch}`, comment.commit && `commit ${comment.commit.slice(0, 7)}`, comment.resolved ? "resolved" : "open"]
+      const status = comment.resolved ? "resolved" : "open";
+      const metaParts = [comment.branch && `branch ${comment.branch}`, comment.commit && `commit ${comment.commit.slice(0, 7)}`, status]
         .filter(Boolean)
         .join(" | ");
 
-      console.log(`- ${location}${metaParts ? ` (${metaParts})` : ""}`);
+      console.log(`[${comment.id}] ${location} (${metaParts})`);
       console.log(`  ${comment.text}`);
+      if (comment.parent_id) {
+        console.log(`  ↳ reply to ${comment.parent_id}`);
+      }
+      console.log();
     }
   });
 
@@ -310,25 +321,42 @@ commentsCmd
   .command("resolve")
   .description("Resolve a comment")
   .argument("<id>", "Comment ID")
-  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("-r, --repo <idOrPath>", "Repository ID or path (optional, resolution is repo-agnostic)")
   .option("--by <name>", "Who resolved it", "user")
-  .action(async (id: string, options: { repo?: string; by: string }) => {
-    let repo: Repository;
-    try {
-      repo = await resolveRepo(options.repo);
-    } catch (err) {
-      console.error((err as Error).message);
-      process.exit(1);
-      return;
-    }
-
-    const success = await state.resolveComment(repo.id, id, options.by);
+  .action(async (id: string, { by }: { repo?: string; by: string }) => {
+    const success = await state.resolveComment(id, by);
     if (success) {
       console.log(`Resolved comment: ${id}`);
     } else {
       console.error(`Comment not found: ${id}`);
       process.exit(1);
     }
+  });
+
+commentsCmd
+  .command("reply")
+  .description("Reply to an existing comment")
+  .argument("<parentId>", "Parent comment ID")
+  .argument("<text>", "Reply text")
+  .action(async (parentId: string, text: string) => {
+    const parent = await state.getCommentById(parentId);
+
+    if (!parent) {
+      console.error(`Comment not found: ${parentId}`);
+      process.exit(1);
+      return;
+    }
+
+    const reply = await state.addComment(parent.repo_id, {
+      file_path: parent.file_path,
+      line_number: parent.line_number,
+      text,
+      branch: parent.branch,
+      commit: parent.commit,
+      parent_id: parent.id,
+    });
+
+    console.log(`Added reply: ${reply.id}`);
   });
 
 // Notes commands
@@ -339,7 +367,8 @@ notesCmd
   .description("List notes for a repository")
   .option("-r, --repo <idOrPath>", "Repository ID or path")
   .option("-b, --branch <branch>", "Filter by branch")
-  .action(async (options: { repo?: string; branch?: string }) => {
+  .option("--json", "Output as JSON for programmatic access")
+  .action(async (options: { repo?: string; branch?: string; json?: boolean }) => {
     let repo: Repository;
     try {
       repo = await resolveRepo(options.repo);
@@ -350,6 +379,11 @@ notesCmd
     }
 
     const notes = await state.getNotes(repo.id, options.branch);
+
+    if (options.json) {
+      console.log(JSON.stringify(notes, null, 2));
+      return;
+    }
 
     if (notes.length === 0) {
       console.log("No notes found.");
@@ -368,9 +402,10 @@ notesCmd
         .filter(Boolean)
         .join(" | ");
 
-      console.log(`- [${note.id}] ${location} (${metaParts})`);
+      console.log(`[${note.id}] ${location} (${metaParts})`);
       console.log(`  Author: ${note.author}`);
       console.log(`  ${note.text}`);
+      console.log();
     }
   });
 
@@ -436,19 +471,10 @@ notesCmd
   .command("dismiss")
   .description("Dismiss a note")
   .argument("<id>", "Note ID")
-  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("-r, --repo <idOrPath>", "Repository ID or path (optional, ignored)")
   .option("--by <name>", "Who dismissed it", "user")
-  .action(async (id: string, options: { repo?: string; by: string }) => {
-    let repo: Repository;
-    try {
-      repo = await resolveRepo(options.repo);
-    } catch (err) {
-      console.error((err as Error).message);
-      process.exit(1);
-      return;
-    }
-
-    const success = await state.dismissNote(repo.id, id, options.by);
+  .action(async (id: string, { by }: { repo?: string; by: string }) => {
+    const success = await state.dismissNote(id, by);
     if (success) {
       console.log(`Dismissed note: ${id}`);
     } else {
