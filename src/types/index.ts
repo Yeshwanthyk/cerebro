@@ -43,6 +43,7 @@ export interface Comment {
   file_path: string;
   line_number?: number;
   text: string;
+  parent_id?: string;
   timestamp: number;
   branch: string;
   commit: string;

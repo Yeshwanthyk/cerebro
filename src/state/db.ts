@@ -114,12 +114,19 @@ function initSchema(): void {
       branch TEXT NOT NULL,
       commit_hash TEXT NOT NULL,
       created_at INTEGER NOT NULL,
+      parent_id TEXT,
       resolved INTEGER DEFAULT 0,
       resolved_by TEXT,
       resolved_at INTEGER,
       FOREIGN KEY (repo_id) REFERENCES repos(id) ON DELETE CASCADE
     )
   `);
+
+  const commentColumns = database.query("PRAGMA table_info(comments)").all() as Array<{ name: string }>;
+  const hasParentId = commentColumns.some((column) => column.name === "parent_id");
+  if (!hasParentId) {
+    database.exec("ALTER TABLE comments ADD COLUMN parent_id TEXT");
+  }
 
   // Create indexes for comments
   database.exec(`
