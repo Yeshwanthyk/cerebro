@@ -2,6 +2,8 @@ import type { DiffLineAnnotation } from "@pierre/precision-diffs/react";
 import { MultiFileDiff } from "@pierre/precision-diffs/react";
 import type { ReactNode } from "react";
 import type { Comment, FileDiff, Note } from "../api/types";
+import type { CommentThread } from "../types/commentThread";
+import { CommentThreadList } from "./CommentThread";
 
 interface AnnotationData {
   type: "comment" | "note";
@@ -12,6 +14,7 @@ interface AnnotationData {
 interface DiffViewProps {
   file: FileDiff;
   comments: Comment[];
+  commentThreads: CommentThread[];
   notes: Note[];
   diffStyle: "split" | "unified";
   onResolveComment: (id: string) => void;
@@ -22,6 +25,7 @@ interface DiffViewProps {
 export function DiffView({
   file,
   comments,
+  commentThreads,
   notes,
   diffStyle,
   onResolveComment,
@@ -56,21 +60,16 @@ export function DiffView({
 
     if (metadata.type === "comment" && metadata.comment) {
       const comment = metadata.comment;
+      const threadsForLine = commentThreads.filter(
+        (thread) => thread.comment.line_number === comment.line_number,
+      );
       return (
         <div className="annotation comment-annotation">
-          <div className="annotation-content">{comment.text}</div>
-          <div className="annotation-footer">
-            <span className="annotation-meta">
-              {new Date(comment.timestamp * 1000).toLocaleString()}
-            </span>
-            <button
-              type="button"
-              className="annotation-action"
-              onClick={() => onResolveComment(comment.id)}
-            >
-              Resolve
-            </button>
-          </div>
+          <CommentThreadList
+            threads={threadsForLine}
+            onResolve={onResolveComment}
+            variant="inline"
+          />
         </div>
       );
     }

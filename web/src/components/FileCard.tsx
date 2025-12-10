@@ -1,9 +1,12 @@
 import type { Comment, FileDiff, Note } from "../api/types";
+import type { CommentThread } from "../types/commentThread";
+import { CommentThreadList } from "./CommentThread";
 import { DiffView } from "./DiffView";
 
 interface FileCardProps {
   file: FileDiff;
   comments: Comment[];
+  commentThreads: CommentThread[];
   notes: Note[];
   diffStyle: "split" | "unified";
   isExpanded: boolean;
@@ -33,6 +36,7 @@ const DEFAULT_STATUS = { label: "Modified", color: "var(--color-modified)" };
 export function FileCard({
   file,
   comments,
+  commentThreads,
   notes,
   diffStyle,
   isExpanded,
@@ -51,8 +55,8 @@ export function FileCard({
   const status = STATUS_STYLES[file.status] ?? DEFAULT_STATUS;
   const unresolvedComments = comments.filter((c) => !c.resolved).length;
   const activeNotes = notes.filter((n) => !n.dismissed).length;
-  const fileLevelComments = comments.filter(
-    (c) => !c.resolved && c.line_number === undefined,
+  const fileLevelThreads = commentThreads.filter(
+    (thread) => thread.comment.line_number === undefined,
   );
 
   return (
@@ -100,27 +104,13 @@ export function FileCard({
 
       {isExpanded && (
         <>
-          {fileLevelComments.length > 0 && (
+          {fileLevelThreads.length > 0 && (
             <div className="file-comments">
-              {fileLevelComments.map((comment) => (
-                <div key={comment.id} className="file-comment">
-                  <div className="comment-text">{comment.text}</div>
-                  <div className="comment-footer">
-                    <span className="comment-time">
-                      {new Date(comment.timestamp * 1000).toLocaleString()}
-                    </span>
-                    <button
-                      type="button"
-                      className="resolve-btn"
-                      onClick={() => {
-                        onResolveComment(comment.id);
-                      }}
-                    >
-                      Resolve
-                    </button>
-                  </div>
-                </div>
-              ))}
+              <CommentThreadList
+                threads={fileLevelThreads}
+                onResolve={onResolveComment}
+                variant="panel"
+              />
             </div>
           )}
           <div className="file-diff">
@@ -130,6 +120,7 @@ export function FileCard({
               <DiffView
                 file={file}
                 comments={comments}
+                commentThreads={commentThreads}
                 notes={notes}
                 diffStyle={diffStyle}
                 onResolveComment={onResolveComment}

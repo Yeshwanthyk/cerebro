@@ -844,6 +844,53 @@ body {
   color: var(--color-accent);
 }
 
+/* Threaded comments */
+.comment-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-thread {
+  position: relative;
+}
+
+.comment-children {
+  margin-top: 8px;
+  border-left: 1px solid var(--color-border);
+  padding-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comment-card {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.comment-card-inline {
+  background: color-mix(in srgb, var(--color-bg-tertiary) 85%, var(--color-bg-secondary));
+}
+
+.comment-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.comment-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
 /* Repo Picker */
 .repo-picker {
   display: flex;

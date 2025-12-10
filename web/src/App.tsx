@@ -6,6 +6,7 @@ import { Modal } from "./components/Modal";
 import { RepoPicker } from "./components/RepoPicker";
 import { useDiff } from "./hooks/useDiff";
 import { useRepos } from "./hooks/useRepos";
+import { buildCommentThreads } from "./utils/commentThreads";
 
 const HALF_PAGE_SIZE = 10;
 
@@ -279,7 +280,23 @@ export default function App() {
     setMode,
   ]);
 
+  const commentThreadsByFile = useMemo(() => {
+    const byFile = new Map<string, ReturnType<typeof buildCommentThreads>>();
+    const activeComments = comments?.filter((c) => !c.resolved) ?? [];
+    const grouped = activeComments.reduce<Record<string, typeof activeComments>>((acc, comment) => {
+      acc[comment.file_path] ??= [];
+      acc[comment.file_path]?.push(comment);
+      return acc;
+    }, {});
+
+    for (const [filePath, fileComments] of Object.entries(grouped)) {
+      byFile.set(filePath, buildCommentThreads(fileComments));
+    }
+    return byFile;
+  }, [comments]);
+
   const getCommentsForFile = (path: string) => (comments ?? []).filter((c) => c.file_path === path);
+  const getCommentThreadsForFile = (path: string) => commentThreadsByFile.get(path) ?? [];
   const getNotesForFile = (path: string) =>
     (notes ?? []).filter(
       (n) => (n.file_path === path || n.file_path.endsWith(`/${path}`)) && !n.dismissed,
@@ -708,12 +725,13 @@ export default function App() {
           </div>
         ) : (
           files.map((file, index) => (
-            <FileCard
-              key={file.path}
-              file={file}
-              comments={getCommentsForFile(file.path)}
-              notes={getNotesForFile(file.path)}
-              diffStyle={diffStyle}
+              <FileCard
+                key={file.path}
+                file={file}
+                comments={getCommentsForFile(file.path)}
+                commentThreads={getCommentThreadsForFile(file.path)}
+                notes={getNotesForFile(file.path)}
+                diffStyle={diffStyle}
               isExpanded={expandedFiles.has(file.path)}
               isLoading={loadingFiles.has(file.path)}
               isFocused={index === focusedIndex}
