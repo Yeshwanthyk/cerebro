@@ -410,7 +410,7 @@ async function handleResolveComment(req: Request, url: URL): Promise<Response> {
     comment_id: string;
     resolved_by?: string;
   };
-  const success = await state.resolveComment(repo.id, comment_id, resolved_by ?? "user");
+  const success = await state.resolveComment(comment_id, resolved_by ?? "user");
   if (!success) {
     return Response.json({ error: "Comment not found" }, { status: 404 });
   }
@@ -439,7 +439,7 @@ async function handleDismissNote(req: Request, url: URL): Promise<Response> {
     note_id: string;
     dismissed_by?: string;
   };
-  const success = await state.dismissNote(repo.id, note_id, dismissed_by ?? "user");
+  const success = await state.dismissNote(note_id, dismissed_by ?? "user");
   if (!success) {
     return Response.json({ error: "Note not found" }, { status: 404 });
   }

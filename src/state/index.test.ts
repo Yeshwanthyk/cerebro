@@ -339,7 +339,7 @@ describe("comments", () => {
       branch: "feature",
       commit: "def456",
     });
-    await state.resolveComment(repo.id, comment2.id);
+    await state.resolveComment(comment2.id);
     
     const allComments = await state.getComments(repo.id);
     expect(allComments.length).toBe(2);
@@ -361,7 +361,7 @@ describe("comments", () => {
       branch: "feature",
       commit: "abc123",
     });
-    await state.resolveComment(repo.id, resolved.id);
+    await state.resolveComment(resolved.id);
     
     await state.addComment(repo.id, {
       file_path: "src/c.ts",
@@ -384,7 +384,7 @@ describe("comments", () => {
       commit: "abc123",
     });
     
-    await state.resolveComment(repo.id, comment.id, "reviewer");
+    await state.resolveComment(comment.id, "reviewer");
     
     const comments = await state.getComments(repo.id);
     expect(comments[0].resolved).toBe(true);
@@ -394,11 +394,11 @@ describe("comments", () => {
 
   it("resolveComment returns false for unknown ID", async () => {
     const repo = await state.addRepo("/tmp/comments-repo", "comments", "main");
-    const success = await state.resolveComment(repo.id, "nonexistent-id");
+    const success = await state.resolveComment("nonexistent-id");
     expect(success).toBe(false);
   });
 
-  it("resolveComment returns false for wrong repo", async () => {
+  it("resolveComment works without repo context", async () => {
     const repo1 = await state.addRepo("/tmp/repo-1", "repo-1", "main");
     const repo2 = await state.addRepo("/tmp/repo-2", "repo-2", "main");
     
@@ -409,8 +409,14 @@ describe("comments", () => {
       commit: "abc123",
     });
     
-    const success = await state.resolveComment(repo2.id, comment.id);
-    expect(success).toBe(false);
+    const success = await state.resolveComment(comment.id);
+    expect(success).toBe(true);
+    
+    const repo1Comments = await state.getComments(repo1.id);
+    expect(repo1Comments[0].resolved).toBe(true);
+    
+    const repo2Comments = await state.getComments(repo2.id);
+    expect(repo2Comments.length).toBe(0);
   });
 });
 
@@ -478,7 +484,7 @@ describe("notes", () => {
       author: "AI",
       type: "rationale",
     });
-    await state.dismissNote(repo.id, note2.id);
+    await state.dismissNote(note2.id);
     
     const allNotes = await state.getNotes(repo.id);
     expect(allNotes.length).toBe(2);
@@ -506,7 +512,7 @@ describe("notes", () => {
       author: "AI",
       type: "explanation",
     });
-    await state.dismissNote(repo.id, dismissed.id);
+    await state.dismissNote(dismissed.id);
     
     const featureNotes = await state.getNotes(repo.id, "feature");
     expect(featureNotes.length).toBe(1);
@@ -525,7 +531,7 @@ describe("notes", () => {
       type: "suggestion",
     });
     
-    await state.dismissNote(repo.id, note.id, "user");
+    await state.dismissNote(note.id, "user");
     
     const notes = await state.getNotes(repo.id);
     expect(notes[0].dismissed).toBe(true);
@@ -535,7 +541,7 @@ describe("notes", () => {
 
   it("dismissNote returns false for unknown ID", async () => {
     const repo = await state.addRepo("/tmp/notes-repo", "notes", "main");
-    const success = await state.dismissNote(repo.id, "nonexistent-id");
+    const success = await state.dismissNote("nonexistent-id");
     expect(success).toBe(false);
   });
 

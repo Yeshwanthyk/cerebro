@@ -493,16 +493,11 @@ async function handleAddComment(req: Request, url: URL): Promise<Response> {
 }
 
 async function handleResolveComment(req: Request, url: URL): Promise<Response> {
-  const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) {
-    return Response.json({ error: "No repository selected" }, { status: 400 });
-  }
-
   const body = await req.json();
   const validation = validateRequest(ResolveCommentRequestSchema, body);
   if (!validation.success) return validation.response;
 
-  const success = await state.resolveComment(repo.id, validation.data.comment_id, validation.data.resolved_by || "user");
+  const success = await state.resolveComment(validation.data.comment_id, validation.data.resolved_by || "user");
   if (!success) {
     return Response.json({ error: "Comment not found" }, { status: 404 });
   }
@@ -523,17 +518,12 @@ async function handleGetNotes(url: URL): Promise<Response> {
   return Response.json(notes);
 }
 
-async function handleDismissNote(req: Request, url: URL): Promise<Response> {
-  const repo = await getCurrentRepoFromRequest(url);
-  if (!repo) {
-    return Response.json({ error: "No repository selected" }, { status: 400 });
-  }
-
+async function handleDismissNote(req: Request, _url: URL): Promise<Response> {
   const body = await req.json();
   const validation = validateRequest(DismissNoteRequestSchema, body);
   if (!validation.success) return validation.response;
 
-  const success = await state.dismissNote(repo.id, validation.data.note_id, validation.data.dismissed_by || "user");
+  const success = await state.dismissNote(validation.data.note_id, validation.data.dismissed_by || "user");
   if (!success) {
     return Response.json({ error: "Note not found" }, { status: 404 });
   }
