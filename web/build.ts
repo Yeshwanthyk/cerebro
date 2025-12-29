@@ -1,21 +1,20 @@
 #!/usr/bin/env bun
 /**
- * Bun build script for Cerebro web frontend
- * Uses Bun's native bundler - no Vite, no webpack, just Bun.
+ * Bun build script for Cerebro web frontend.
+ * Uses Bun's native bundler - no Vite, no webpack.
  */
 
-import { existsSync } from "node:fs";
-import { cp, rm } from "node:fs/promises";
 import path from "node:path";
+
+const outdir = path.join(import.meta.dir, "dist");
 
 console.log("\n🚀 Building Cerebro Web with Bun...\n");
 
-const outdir = path.join(process.cwd(), "dist");
-
 // Clean previous build
-if (existsSync(outdir)) {
-  console.log(`🗑️  Cleaning previous build at ${outdir}`);
-  await rm(outdir, { recursive: true, force: true });
+const distExists = await Bun.file(path.join(outdir, "index.html")).exists();
+if (distExists) {
+  console.log("🗑️  Cleaning previous build");
+  await Bun.$`rm -rf ${outdir}`;
 }
 
 const start = performance.now();
@@ -25,7 +24,7 @@ const entrypoints = [...new Bun.Glob("**/*.html").scanSync("src")]
   .map((f) => path.resolve("src", f))
   .filter((f) => !f.includes("node_modules"));
 
-console.log(`📄 Found ${entrypoints.length} HTML file(s) to process\n`);
+console.log(`📄 Found ${entrypoints.length} HTML file(s)\n`);
 
 const result = await Bun.build({
   entrypoints,
@@ -49,9 +48,15 @@ const result = await Bun.build({
   },
 });
 
-const end = performance.now();
+const elapsed = performance.now() - start;
 
-// Format file size
+if (!result.success) {
+  console.error("\n❌ Build failed:");
+  for (const log of result.logs) console.error(log);
+  process.exit(1);
+}
+
+// Print results
 const formatSize = (bytes: number): string => {
   const units = ["B", "KB", "MB"];
   let size = bytes;
@@ -63,58 +68,46 @@ const formatSize = (bytes: number): string => {
   return `${size.toFixed(2)} ${units[idx]}`;
 };
 
-// Print results
-const table = result.outputs.map((output) => ({
-  File: path.relative(process.cwd(), output.path),
-  Type: output.kind,
-  Size: formatSize(output.size),
-}));
+console.table(
+  result.outputs.map((o) => ({
+    File: path.relative(import.meta.dir, o.path),
+    Type: o.kind,
+    Size: formatSize(o.size),
+  }))
+);
 
-console.table(table);
-
-if (!result.success) {
-  console.error("\n❌ Build failed:");
-  for (const log of result.logs) {
-    console.error(log);
-  }
-  process.exit(1);
+// Copy static assets from src/images (canonical location)
+const imagesDir = path.join(import.meta.dir, "src", "images");
+if (await Bun.file(path.join(imagesDir, ".gitkeep")).exists().catch(() => false) || 
+    (await Bun.$`ls ${imagesDir} 2>/dev/null`.quiet().then(() => true).catch(() => false))) {
+  console.log("📁 Copying images...");
+  await Bun.$`cp -r ${imagesDir} ${outdir}/images`.quiet().catch(() => {});
 }
 
-// Copy static assets (images folder)
-const imagesDir = path.join(process.cwd(), "images");
-if (existsSync(imagesDir)) {
-  console.log("📁 Copying static assets (images)...");
-  await cp(imagesDir, path.join(outdir, "images"), { recursive: true });
-}
-
-// Fix HTML to point to correct entry bundle
-// Bun bundler bug: HTML sometimes points to wrong chunk
+// Workaround: Bun bundler sometimes points HTML to wrong chunk.
+// Find the main bundle (contains createRoot) and fix the script src.
 const htmlPath = path.join(outdir, "index.html");
 let html = await Bun.file(htmlPath).text();
 
-// Find the main bundle (largest JS file with "index-" prefix that imports React)
 const jsFiles = [...new Bun.Glob("index-*.js").scanSync(outdir)];
 let mainBundle = "";
 let maxSize = 0;
+
 for (const file of jsFiles) {
-  const fullPath = path.join(outdir, file);
-  const content = await Bun.file(fullPath).text();
-  const size = content.length;
-  // Main bundle has React and is the largest
-  if (size > maxSize && content.includes("createRoot")) {
-    maxSize = size;
+  const content = await Bun.file(path.join(outdir, file)).text();
+  if (content.length > maxSize && content.includes("createRoot")) {
+    maxSize = content.length;
     mainBundle = file;
   }
 }
 
 if (mainBundle) {
-  // Replace the script src with the correct bundle
   const scriptMatch = html.match(/src="\.\/index-[^"]+\.js"/);
   if (scriptMatch && !scriptMatch[0].includes(mainBundle)) {
-    console.log(`🔧 Fixing HTML script reference: ${scriptMatch[0]} → src="./${mainBundle}"`);
+    console.log(`🔧 Fixing script ref → ${mainBundle}`);
     html = html.replace(/src="\.\/index-[^"]+\.js"/, `src="./${mainBundle}"`);
     await Bun.write(htmlPath, html);
   }
 }
 
-console.log(`\n✅ Build completed in ${(end - start).toFixed(2)}ms\n`);
+console.log(`\n✅ Done in ${elapsed.toFixed(0)}ms\n`);

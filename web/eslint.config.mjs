@@ -1,10 +1,11 @@
 /**
  * ESLint config - TYPE-AWARE rules only
  * oxlint handles non-type-aware rules (faster)
- * ESLint handles rules requiring type information
+ * ESLint handles rules requiring type information + prefer-const + unused-imports
  */
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
+import unusedImports from "eslint-plugin-unused-imports";
 
 export default [
   {
@@ -19,6 +20,7 @@ export default [
     },
     plugins: {
       "@typescript-eslint": tseslint,
+      "unused-imports": unusedImports,
     },
     rules: {
       // ===========================================
@@ -57,6 +59,12 @@ export default [
           allowNullableObject: true,
         },
       ],
+
+      // ===========================================
+      // Rules not in oxlint
+      // ===========================================
+      "prefer-const": "error",
+      "unused-imports/no-unused-imports": "error",
     },
   },
 ];

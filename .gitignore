@@ -31,6 +31,12 @@ issues.md
 *.bun-build
 .*.bun-build
 
+# TypeScript build info
+web/tsconfig.tsbuildinfo
+
+# Local AI state
+.beads/
+
 # Config (local overrides)
 .env
 .env.local

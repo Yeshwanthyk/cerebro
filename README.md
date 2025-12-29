@@ -116,7 +116,7 @@ cerebro/
 │   │   ├── api/          # API client
 │   │   ├── components/   # React components
 │   │   └── hooks/        # Custom hooks
-│   └── build.ts          # Vite build script
+│   └── build.ts          # Bun build script
 ├── mac/                  # macOS app (Swift)
 │   └── Sources/
 │       ├── CerebroApp.swift
