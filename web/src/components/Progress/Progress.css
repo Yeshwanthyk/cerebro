@@ -1,0 +1,33 @@
+/* Progress */
+.progress {
+  margin-bottom: 24px;
+}
+
+.progress > span {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.progress strong {
+  color: var(--color-text);
+}
+
+.shortcut-hint {
+  float: right;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.progress-bar {
+  height: 4px;
+  background: var(--color-bg-tertiary);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}

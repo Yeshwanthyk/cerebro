@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Command, CommandPalette } from "./components/CommandPalette";
 import { FileCard } from "./components/FileCard";
-import { Icon } from "./components/Icon";
-import { Modal } from "./components/Modal";
 import { RepoPicker } from "./components/RepoPicker";
+import { Header } from "./components/Header";
+import { Progress } from "./components/Progress";
+import {
+  ShortcutsModal,
+  ConfirmDiscardModal,
+  CommentModal,
+  CommitModal,
+} from "./components/Modals";
 import { useDiff } from "./hooks/useDiff";
 import { useRepos } from "./hooks/useRepos";
 import { buildCommentThreads } from "./utils/commentThreads";
@@ -48,46 +54,31 @@ export default function App() {
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState(0);
 
-  // Clear expanded files when mode or compare branch changes (file list changes)
+  // Clear expanded files when mode or compare branch changes
   useEffect(() => {
     setExpandedFiles(new Set());
     setFocusedIndex(0);
   }, [mode, compareBranch, currentRepo]);
+
   const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommitModal, setShowCommitModal] = useState(false);
-  const [commitMessage, setCommitMessage] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
   const [activeComment, setActiveComment] = useState<{
     filePath: string;
     lineNumber: number;
     content: string;
   } | null>(null);
-  const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
 
   // For vim multi-key sequences (gg)
   const lastKeyRef = useRef<string | null>(null);
   const lastKeyTimeRef = useRef<number>(0);
 
-  // Close branch picker on click outside
-  useEffect(() => {
-    if (!showBranchPicker) {
-      return;
-    }
-    const handleClickOutside = () => setShowBranchPicker(false);
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [showBranchPicker]);
-
   const files = useMemo(() => {
     const raw = diff?.files ?? [];
     return [...raw].sort((a, b) => {
-      // Staged files first (in working mode)
-      if (a.staged !== b.staged) {
-        return a.staged ? -1 : 1;
-      }
-      // Then sort by path (groups directories together)
+      if (a.staged !== b.staged) return a.staged ? -1 : 1;
       return a.path.localeCompare(b.path);
     });
   }, [diff?.files]);
@@ -97,7 +88,6 @@ export default function App() {
       const file = files.find((f) => f.path === path);
       const isExpanding = !expandedFiles.has(path);
 
-      // If expanding and file has no patch loaded (lazy loading), load it first
       if (isExpanding && file && !file.patch) {
         setLoadingFiles((prev) => new Set(prev).add(path));
         await loadFileDiff(path);
@@ -124,7 +114,6 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      // CMD+K opens command palette (works even in inputs)
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setShowCommandPalette((s) => !s);
@@ -139,16 +128,13 @@ export default function App() {
       const lastKey = lastKeyRef.current;
       const timeSinceLastKey = now - lastKeyTimeRef.current;
 
-      // Check for multi-key sequences (within 500ms)
       if (lastKey === "g" && e.key === "g" && timeSinceLastKey < 500) {
-        // gg - go to first file
         e.preventDefault();
         setFocusedIndex(0);
         lastKeyRef.current = null;
         return;
       }
 
-      // Store this key for potential sequence
       lastKeyRef.current = e.key;
       lastKeyTimeRef.current = now;
 
@@ -167,14 +153,10 @@ export default function App() {
         case "Enter":
         case "l":
           e.preventDefault();
-          // Expand/toggle file
-          if (focusedFile) {
-            void toggleFile(focusedFile.path);
-          }
+          if (focusedFile) void toggleFile(focusedFile.path);
           break;
         case "h":
           e.preventDefault();
-          // Collapse file
           if (focusedFile && expandedFiles.has(focusedFile.path)) {
             setExpandedFiles((prev) => {
               const next = new Set(prev);
@@ -184,25 +166,19 @@ export default function App() {
           }
           break;
         case "g":
-          // First part of gg sequence - prevent sound
           e.preventDefault();
           break;
         case "G":
           e.preventDefault();
-          // Go to last file
-          if (files.length > 0) {
-            setFocusedIndex(files.length - 1);
-          }
+          if (files.length > 0) setFocusedIndex(files.length - 1);
           break;
         case "d":
-          // Ctrl+d - half page down
           if (e.ctrlKey) {
             e.preventDefault();
             setFocusedIndex((i) => Math.min(i + HALF_PAGE_SIZE, files.length - 1));
           }
           break;
         case "u":
-          // Ctrl+u - half page up, or unstage (in working mode, for staged files)
           if (e.ctrlKey) {
             e.preventDefault();
             setFocusedIndex((i) => Math.max(i - HALF_PAGE_SIZE, 0));
@@ -213,24 +189,17 @@ export default function App() {
           break;
         case "v":
           e.preventDefault();
-          // Toggle viewed
-          if (focusedFile) {
-            void toggleViewed(focusedFile.path, focusedFile.viewed);
-          }
+          if (focusedFile) void toggleViewed(focusedFile.path, focusedFile.viewed);
           break;
         case "s":
           e.preventDefault();
-          // Stage file (only unstaged files)
           if (focusedFile && mode === "working" && !focusedFile.staged) {
             void stageFile(focusedFile.path);
           }
           break;
         case "x":
           e.preventDefault();
-          // Discard with confirmation
-          if (focusedFile && mode === "working") {
-            setConfirmDiscard(focusedFile.path);
-          }
+          if (focusedFile && mode === "working") setConfirmDiscard(focusedFile.path);
           break;
         case "1":
           e.preventDefault();
@@ -250,9 +219,7 @@ export default function App() {
           break;
         case "c":
           e.preventDefault();
-          if (mode === "working" && files.some((f) => f.staged)) {
-            setShowCommitModal(true);
-          }
+          if (mode === "working" && files.some((f) => f.staged)) setShowCommitModal(true);
           break;
         case "Escape":
           e.preventDefault();
@@ -265,20 +232,8 @@ export default function App() {
     };
 
     window.addEventListener("keydown", handleKey);
-    return () => {
-      window.removeEventListener("keydown", handleKey);
-    };
-  }, [
-    files,
-    focusedIndex,
-    expandedFiles,
-    mode,
-    toggleFile,
-    toggleViewed,
-    stageFile,
-    unstageFile,
-    setMode,
-  ]);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode]);
 
   const commentThreadsByFile = useMemo(() => {
     const byFile = new Map<string, ReturnType<typeof buildCommentThreads>>();
@@ -308,7 +263,6 @@ export default function App() {
     const stagedCount = files.filter((f) => f.staged).length;
 
     return [
-      // File commands
       ...files.map((file, index) => ({
         id: `file-${file.path}`,
         label: file.path,
@@ -318,8 +272,6 @@ export default function App() {
           void toggleFile(file.path);
         },
       })),
-
-      // Actions
       {
         id: "toggle-viewed",
         label: focusedFile?.viewed ? "Mark as unreviewed" : "Mark as reviewed",
@@ -366,8 +318,6 @@ export default function App() {
         category: "actions" as const,
         action: () => void refresh(),
       },
-
-      // Navigation
       {
         id: "go-first",
         label: "Go to first file",
@@ -408,8 +358,6 @@ export default function App() {
         },
         disabled: !focusedFile || !expandedFiles.has(focusedFile.path),
       },
-
-      // Settings
       {
         id: "branch-mode",
         label: "Switch to Branch mode",
@@ -441,99 +389,9 @@ export default function App() {
         action: () => setShowShortcuts(true),
       },
     ];
-  }, [
-    files,
-    focusedIndex,
-    mode,
-    diffStyle,
-    expandedFiles,
-    toggleFile,
-    toggleViewed,
-    stageFile,
-    unstageFile,
-    refresh,
-    setMode,
-  ]);
+  }, [files, focusedIndex, mode, diffStyle, expandedFiles, toggleFile, toggleViewed, stageFile, unstageFile, refresh, setMode]);
 
-  const handleToggleViewed = async (path: string, viewed: boolean) => {
-    try {
-      await toggleViewed(path, viewed);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleResolveComment = async (id: string) => {
-    try {
-      await resolveComment(id);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleDismissNote = async (id: string) => {
-    try {
-      await dismissNote(id);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleStage = async (path: string) => {
-    try {
-      await stageFile(path);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleUnstage = async (path: string) => {
-    try {
-      await unstageFile(path);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleDiscard = async (path: string) => {
-    try {
-      await discardFile(path);
-      setConfirmDiscard(null);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleCommit = async (message: string) => {
-    if (!message.trim()) {
-      return;
-    }
-    try {
-      await commit(message);
-      setCommitMessage("");
-      setShowCommitModal(false);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleAddComment = async (text: string) => {
-    if (!activeComment) {
-      return;
-    }
-    try {
-      await addComment(
-        activeComment.filePath,
-        activeComment.lineNumber,
-        text,
-        activeComment.content,
-      );
-      setActiveComment(null);
-    } catch {
-      // ignore
-    }
-  };
-
+  // Event handlers
   const handleRepoSelect = async (id: string) => {
     try {
       await setCurrentRepo(id);
@@ -554,7 +412,36 @@ export default function App() {
     }
   };
 
-  // Show welcome screen if no repos or no current repo selected
+  const handleDiscard = async (path: string) => {
+    try {
+      await discardFile(path);
+      setConfirmDiscard(null);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCommit = async (message: string) => {
+    if (!message.trim()) return;
+    try {
+      await commit(message);
+      setShowCommitModal(false);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleAddComment = async (text: string) => {
+    if (!activeComment) return;
+    try {
+      await addComment(activeComment.filePath, activeComment.lineNumber, text, activeComment.content);
+      setActiveComment(null);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Welcome screen
   if (!reposLoading && (repos.length === 0 || !currentRepo)) {
     return (
       <div className="welcome">
@@ -562,15 +449,11 @@ export default function App() {
         <h1>Cerebro</h1>
         <p>Git diff review tool</p>
         <div className="welcome-content">
-          <p>
-            {repos.length === 0
-              ? "No repositories tracked yet."
-              : "Select a repository to get started."}
-          </p>
+          <p>{repos.length === 0 ? "No repositories tracked yet." : "Select a repository to get started."}</p>
           <p className="muted">{repos.length === 0 ? "Add a repository to get started:" : ""}</p>
           <RepoPicker
             repos={repos}
-            currentRepo={currentRepo}
+            currentRepo={currentRepo ?? null}
             onSelect={handleRepoSelect}
             onAdd={handleAddRepo}
             onRemove={handleRemoveRepo}
@@ -584,9 +467,7 @@ export default function App() {
     return (
       <div className="loading">
         <img src="/images/Cerebro.png" alt="Cerebro" className="loading-logo" />
-        <p>
-          <strong>Loading...</strong>
-        </p>
+        <p><strong>Loading...</strong></p>
       </div>
     );
   }
@@ -601,137 +482,46 @@ export default function App() {
   }
 
   const viewedCount = files.filter((f) => f.viewed).length;
-  const fileCount = files.length;
-  const progressPercent = fileCount > 0 ? (viewedCount / fileCount) * 100 : 0;
-  const currentRepoData = repos.find((r) => r.id === currentRepo);
+  const stagedFiles = files.filter((f) => f.staged);
 
   return (
     <div className="app">
-      <header className="header">
-        <div className="header-left">
-          <img src="/images/Cerebro.png" alt="Cerebro" className="header-logo" />
-          <RepoPicker
-            repos={repos}
-            currentRepo={currentRepo}
-            onSelect={handleRepoSelect}
-            onAdd={handleAddRepo}
-            onRemove={handleRemoveRepo}
-          />
-          <div className="header-separator" />
-          <div className="mode-switcher">
-            <button
-              type="button"
-              className={mode === "branch" ? "active" : ""}
-              onClick={() => setMode("branch")}
-            >
-              Branch
-            </button>
-            <button
-              type="button"
-              className={mode === "working" ? "active" : ""}
-              onClick={() => setMode("working")}
-            >
-              Working
-            </button>
-          </div>
-          <span className="branch">{diff?.branch}</span>
-          {mode === "branch" && (
-            <div className="branch-selector">
-              <span className="compare-label">vs</span>
-              <button
-                type="button"
-                className="branch-selector-btn"
-                onClick={() => setShowBranchPicker(!showBranchPicker)}
-                aria-expanded={showBranchPicker}
-                aria-haspopup="listbox"
-              >
-                {compareBranch ?? currentRepoData?.baseBranch ?? "main"}
-                <span className="dropdown-arrow" aria-hidden="true">
-                  ▼
-                </span>
-              </button>
-              {showBranchPicker && (
-                <div className="branch-picker" role="listbox" aria-label="Select branch">
-                  {branches.map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      role="option"
-                      aria-selected={b === (compareBranch ?? currentRepoData?.baseBranch)}
-                      className={
-                        b === (compareBranch ?? currentRepoData?.baseBranch) ? "active" : ""
-                      }
-                      onClick={() => {
-                        setCompareBranch(b);
-                        setShowBranchPicker(false);
-                      }}
-                    >
-                      {b}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {mode === "working" && <span className="commit">{diff?.commit.slice(0, 7)}</span>}
-        </div>
-        <div className="header-right">
-          <button
-            type="button"
-            className="commit-btn"
-            onClick={() => setShowCommitModal(true)}
-            disabled={mode !== "working" || !files.some((f) => f.staged)}
-          >
-            Commit
-          </button>
-          <button
-            type="button"
-            className={`view-toggle ${diffStyle === "split" ? "active" : ""}`}
-            onClick={() => {
-              setDiffStyle(diffStyle === "split" ? "unified" : "split");
-            }}
-            title="Toggle diff view"
-          >
-            {diffStyle === "split" ? "Split" : "Unified"}
-          </button>
-          <button
-            type="button"
-            className="view-toggle"
-            onClick={() => void refresh()}
-            title="Refresh"
-          >
-            <Icon name="refresh" size={14} />
-          </button>
-        </div>
-      </header>
+      <Header
+        repos={repos}
+        currentRepo={currentRepo ?? null}
+        diff={diff}
+        mode={mode}
+        diffStyle={diffStyle}
+        branches={branches}
+        compareBranch={compareBranch}
+        hasStaged={stagedFiles.length > 0}
+        onRepoSelect={handleRepoSelect}
+        onAddRepo={handleAddRepo}
+        onRemoveRepo={handleRemoveRepo}
+        onModeChange={setMode}
+        onDiffStyleChange={setDiffStyle}
+        onCompareBranchChange={setCompareBranch}
+        onCommitClick={() => setShowCommitModal(true)}
+        onRefresh={() => void refresh()}
+      />
 
-      {fileCount > 0 && (
-        <div className="progress">
-          <span>
-            <strong>{viewedCount}</strong> of {fileCount} files reviewed
-          </span>
-          <span className="shortcut-hint">Press ⌘K for commands, ? for shortcuts</span>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${String(progressPercent)}%` }} />
-          </div>
-        </div>
-      )}
+      <Progress viewedCount={viewedCount} totalCount={files.length} />
 
       <main className="file-list">
-        {fileCount === 0 ? (
+        {files.length === 0 ? (
           <div className="empty">
             <p>No changes</p>
             <p className="muted">Your branch is up to date</p>
           </div>
         ) : (
           files.map((file, index) => (
-              <FileCard
-                key={file.path}
-                file={file}
-                comments={getCommentsForFile(file.path)}
-                commentThreads={getCommentThreadsForFile(file.path)}
-                notes={getNotesForFile(file.path)}
-                diffStyle={diffStyle}
+            <FileCard
+              key={file.path}
+              file={file}
+              comments={getCommentsForFile(file.path)}
+              commentThreads={getCommentThreadsForFile(file.path)}
+              notes={getNotesForFile(file.path)}
+              diffStyle={diffStyle}
               isExpanded={expandedFiles.has(file.path)}
               isLoading={loadingFiles.has(file.path)}
               isFocused={index === focusedIndex}
@@ -740,14 +530,12 @@ export default function App() {
                 void toggleFile(file.path);
                 setFocusedIndex(index);
               }}
-              onToggleViewed={() => void handleToggleViewed(file.path, file.viewed)}
-              onResolveComment={(id) => void handleResolveComment(id)}
-              onDismissNote={(id) => void handleDismissNote(id)}
-              onStage={() => void handleStage(file.path)}
-              onUnstage={() => void handleUnstage(file.path)}
-              onDiscard={() => {
-                setConfirmDiscard(file.path);
-              }}
+              onToggleViewed={() => void toggleViewed(file.path, file.viewed)}
+              onResolveComment={(id) => void resolveComment(id)}
+              onDismissNote={(id) => void dismissNote(id)}
+              onStage={() => void stageFile(file.path)}
+              onUnstage={() => void unstageFile(file.path)}
+              onDiscard={() => setConfirmDiscard(file.path)}
               onLineClick={(lineNumber, content) => {
                 setActiveComment({ filePath: file.path, lineNumber, content });
               }}
@@ -756,218 +544,35 @@ export default function App() {
         )}
       </main>
 
-      {showShortcuts && (
-        <Modal
-          onClose={() => setShowShortcuts(false)}
-          className="shortcuts-modal"
-          aria-labelledby="shortcuts-title"
-        >
-          <h3 id="shortcuts-title">Keyboard Shortcuts</h3>
-          <h4>Navigation</h4>
-          <ul>
-            <li>
-              <kbd>j</kbd> / <kbd>k</kbd> Next / previous file
-            </li>
-            <li>
-              <kbd>gg</kbd> First file
-            </li>
-            <li>
-              <kbd>G</kbd> Last file
-            </li>
-            <li>
-              <kbd>Ctrl+d</kbd> / <kbd>Ctrl+u</kbd> Half-page down / up
-            </li>
-            <li>
-              <kbd>l</kbd> / <kbd>Enter</kbd> Expand file
-            </li>
-            <li>
-              <kbd>h</kbd> Collapse file
-            </li>
-            <li>
-              <kbd>o</kbd> Toggle file
-            </li>
-          </ul>
-          <h4>Actions</h4>
-          <ul>
-            <li>
-              <kbd>v</kbd> Toggle reviewed
-            </li>
-            <li>
-              <kbd>s</kbd> Stage file
-            </li>
-            <li>
-              <kbd>u</kbd> Unstage file
-            </li>
-            <li>
-              <kbd>x</kbd> Discard changes
-            </li>
-            <li>
-              <kbd>c</kbd> Commit staged
-            </li>
-          </ul>
-          <h4>Modes</h4>
-          <ul>
-            <li>
-              <kbd>1</kbd> Branch mode
-            </li>
-            <li>
-              <kbd>2</kbd> Working mode
-            </li>
-            <li>
-              <kbd>t</kbd> Toggle split/unified
-            </li>
-            <li>
-              <kbd>?</kbd> Toggle shortcuts
-            </li>
-            <li>
-              <kbd>⌘</kbd>
-              <kbd>K</kbd> Command palette
-            </li>
-          </ul>
-        </Modal>
-      )}
+      {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       {confirmDiscard && (
-        <Modal onClose={() => setConfirmDiscard(null)} className="confirm-modal">
-          <p>
-            Discard changes to <strong>{confirmDiscard}</strong>?
-          </p>
-          <p className="muted">This cannot be undone.</p>
-          <div className="modal-actions">
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmDiscard(null);
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="danger"
-              onClick={() => void handleDiscard(confirmDiscard)}
-            >
-              Discard
-            </button>
-          </div>
-        </Modal>
+        <ConfirmDiscardModal
+          filePath={confirmDiscard}
+          onClose={() => setConfirmDiscard(null)}
+          onConfirm={() => void handleDiscard(confirmDiscard)}
+        />
       )}
 
       {activeComment && (
-        <Modal
+        <CommentModal
+          lineNumber={activeComment.lineNumber}
+          lineContent={activeComment.content}
           onClose={() => setActiveComment(null)}
-          className="comment-modal"
-          aria-labelledby="comment-title"
-        >
-          <h3 id="comment-title">Comment on line {activeComment.lineNumber}</h3>
-          {activeComment.content && <pre className="code-preview">{activeComment.content}</pre>}
-          <textarea
-            placeholder="Write your comment..."
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                const text = e.currentTarget.value.trim();
-                if (text) {
-                  void handleAddComment(text);
-                }
-              }
-            }}
-          />
-          <div className="modal-actions">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveComment(null);
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                const textarea =
-                  e.currentTarget.parentElement?.parentElement?.querySelector("textarea");
-                const text = textarea?.value.trim();
-                if (text) {
-                  void handleAddComment(text);
-                }
-              }}
-            >
-              Comment
-            </button>
-          </div>
-        </Modal>
+          onSubmit={(text) => void handleAddComment(text)}
+        />
       )}
 
       {showCommitModal && (
-        <Modal
+        <CommitModal
+          stagedFiles={stagedFiles}
           onClose={() => setShowCommitModal(false)}
-          className="commit-modal"
-          aria-labelledby="commit-title"
-        >
-          <h3 id="commit-title">Commit Changes</h3>
-          <div className="commit-files">
-            <span className="commit-files-count">
-              {files.filter((f) => f.staged).length} file
-              {files.filter((f) => f.staged).length !== 1 ? "s" : ""} staged
-            </span>
-            <ul>
-              {files
-                .filter((f) => f.staged)
-                .map((f) => (
-                  <li key={f.path}>
-                    <span className={`status-dot ${f.status}`} />
-                    {f.path}
-                  </li>
-                ))}
-            </ul>
-          </div>
-          <div className="commit-type-buttons">
-            {["feat", "fix", "chore", "docs", "refactor", "test"].map((type) => (
-              <button
-                key={type}
-                type="button"
-                className={commitMessage.startsWith(`${type}: `) ? "active" : ""}
-                onClick={() => {
-                  const msg = commitMessage.replace(/^(feat|fix|chore|docs|refactor|test):\s*/, "");
-                  setCommitMessage(`${type}: ${msg}`);
-                }}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-          <textarea
-            placeholder="Commit message..."
-            value={commitMessage}
-            onChange={(e) => setCommitMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                void handleCommit(commitMessage);
-              }
-            }}
-          />
-          <div className="modal-actions">
-            <span className="modal-hint">⌘+Enter to commit</span>
-            <button type="button" onClick={() => setShowCommitModal(false)}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="primary"
-              disabled={!commitMessage.trim()}
-              onClick={() => void handleCommit(commitMessage)}
-            >
-              Commit
-            </button>
-          </div>
-        </Modal>
+          onCommit={(msg) => void handleCommit(msg)}
+        />
       )}
 
       {showCommandPalette && (
-        <CommandPalette
-          commands={commands}
-          onClose={() => setShowCommandPalette(false)}
-        />
+        <CommandPalette commands={commands} onClose={() => setShowCommandPalette(false)} />
       )}
     </div>
   );

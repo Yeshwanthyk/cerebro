@@ -1,0 +1,289 @@
+/* Shortcuts Modal */
+.shortcuts-modal {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.shortcuts-modal h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--color-text);
+}
+
+.shortcuts-modal h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.shortcuts-modal h4:first-of-type {
+  margin-top: 0;
+}
+
+.shortcuts-modal ul {
+  list-style: none;
+  margin-bottom: 8px;
+}
+
+.shortcuts-modal li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.shortcuts-modal kbd {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.shortcuts-modal li kbd + kbd {
+  margin-left: 4px;
+}
+
+/* Confirm Modal */
+.confirm-modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 400px;
+}
+
+.confirm-modal p {
+  margin-bottom: 12px;
+}
+
+/* Comment Modal */
+.comment-modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 700px;
+  width: 90%;
+}
+
+.comment-modal h3 {
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--color-text-secondary);
+}
+
+.code-preview {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-muted);
+  overflow-x: auto;
+}
+
+.comment-modal textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  resize: vertical;
+}
+
+/* Commit Modal */
+.commit-modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 480px;
+  width: 90%;
+}
+
+.commit-modal h3 {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  color: var(--color-text-secondary);
+}
+
+.commit-files {
+  margin-bottom: 12px;
+}
+
+.commit-files-count {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+  padding-left: 14px;
+  display: block;
+}
+
+.commit-files ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.commit-files li {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  padding: 2px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-modified);
+  position: relative;
+  top: -1px;
+}
+
+.status-dot.added {
+  background: var(--color-added);
+}
+
+.status-dot.deleted {
+  background: var(--color-deleted);
+}
+
+.status-dot.renamed {
+  background: var(--color-renamed);
+}
+
+.commit-type-buttons {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.commit-type-buttons button {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border: none;
+  border-radius: 4px;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.commit-type-buttons button:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+.commit-type-buttons button.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.commit-modal textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.commit-modal textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* Shared Modal Actions */
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  align-items: center;
+}
+
+.modal-actions button {
+  padding: 10px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-actions button:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+.modal-actions button.primary {
+  background: var(--color-accent);
+  color: white;
+  border: none;
+}
+
+.modal-actions button.primary:hover {
+  filter: brightness(1.1);
+}
+
+.modal-actions button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.modal-actions button.danger {
+  background: var(--color-deleted);
+  color: white;
+  border: none;
+}
+
+.modal-actions button.danger:hover {
+  filter: brightness(1.1);
+}
+
+.modal-hint {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-right: auto;
+}

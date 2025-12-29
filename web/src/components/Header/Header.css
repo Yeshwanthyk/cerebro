@@ -1,0 +1,185 @@
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.header-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.branch {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.commit {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.header-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Mode Switcher */
+.mode-switcher {
+  display: flex;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+
+.mode-switcher button {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 5px;
+  min-width: 70px;
+  text-align: center;
+}
+
+.mode-switcher button.active {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+}
+
+.view-toggle,
+.commit-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.view-toggle.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.commit-btn {
+  background: transparent;
+  color: var(--color-added);
+  border: 1px solid var(--color-added);
+}
+
+.commit-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-added) 15%, transparent);
+}
+
+.commit-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Branch Selector */
+.branch-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compare-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.branch-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.branch-selector-btn:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+.dropdown-arrow {
+  font-size: 8px;
+  opacity: 0.5;
+}
+
+.branch-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  .branch-picker {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.branch-picker button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.branch-picker button:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+.branch-picker button.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
