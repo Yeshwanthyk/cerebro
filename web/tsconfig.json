@@ -24,7 +24,8 @@
     "types": ["bun-types"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@cerebro/types": ["../src/types/index.ts"]
     }
   },
   "include": ["src/**/*", "build.ts"],
