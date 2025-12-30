@@ -4,7 +4,7 @@ export interface Command {
   id: string;
   label: string;
   shortcut?: string;
-  category: "navigation" | "actions" | "files" | "settings";
+  category: "navigation" | "actions" | "files" | "settings" | "projects";
   action: () => void;
   disabled?: boolean;
 }
@@ -121,13 +121,14 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   );
 
   const categoryLabels: Record<string, string> = {
+    projects: "Projects",
     navigation: "Navigation",
     actions: "Actions",
     files: "Files",
     settings: "Settings",
   };
 
-  const categoryOrder = ["files", "actions", "navigation", "settings"];
+  const categoryOrder = ["projects", "files", "actions", "navigation", "settings"];
 
   let flatIndex = 0;
 

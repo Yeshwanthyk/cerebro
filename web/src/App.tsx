@@ -263,6 +263,13 @@ export default function App() {
     const stagedCount = files.filter((f) => f.staged).length;
 
     return [
+      ...repos.map((repo) => ({
+        id: `switch-repo-${repo.id}`,
+        label: repo.name,
+        category: "projects" as const,
+        action: () => void setCurrentRepo(repo.id),
+        disabled: repo.id === currentRepo,
+      })),
       ...files.map((file, index) => ({
         id: `file-${file.path}`,
         label: file.path,
@@ -389,7 +396,7 @@ export default function App() {
         action: () => setShowShortcuts(true),
       },
     ];
-  }, [files, focusedIndex, mode, diffStyle, expandedFiles, toggleFile, toggleViewed, stageFile, unstageFile, refresh, setMode]);
+  }, [repos, currentRepo, setCurrentRepo, files, focusedIndex, mode, diffStyle, expandedFiles, toggleFile, toggleViewed, stageFile, unstageFile, refresh, setMode]);
 
   // Event handlers
   const handleRepoSelect = async (id: string) => {
