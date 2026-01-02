@@ -68,6 +68,25 @@
   color: var(--color-text);
 }
 
+.mode-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-bg-tertiary);
+  border-radius: 9px;
+}
+
+.mode-switcher button.active .mode-count {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
 .view-toggle,
 .commit-btn {
   padding: 8px 12px;
@@ -100,17 +119,24 @@
   pointer-events: none;
 }
 
-/* Branch Selector */
-.branch-selector {
+/* Branch Comparison */
+.branch-comparison {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
-.compare-label {
+.compare-arrow {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--color-muted);
+}
+
+/* Working Info */
+.working-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .branch-selector-btn {

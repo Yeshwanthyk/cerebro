@@ -7,6 +7,12 @@ import "./Header.css";
 
 type DiffMode = "branch" | "working" | "pr";
 
+interface ModeCounts {
+  branch: number | null;
+  working: number | null;
+  pr: number | null;
+}
+
 interface HeaderProps {
   repos: Repository[];
   currentRepo: string | null;
@@ -16,6 +22,7 @@ interface HeaderProps {
   branches: string[];
   compareBranch: string | null;
   hasStaged: boolean;
+  modeCounts: ModeCounts;
   onRepoSelect: (id: string) => void;
   onAddRepo: (path: string) => Promise<void>;
   onRemoveRepo: (id: string) => void;
@@ -37,6 +44,7 @@ export function Header({
   branches,
   compareBranch,
   hasStaged,
+  modeCounts,
   onRepoSelect,
   onAddRepo,
   onRemoveRepo,
@@ -50,6 +58,11 @@ export function Header({
 }: HeaderProps) {
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const currentRepoData = repos.find((r) => r.id === currentRepo);
+
+  const renderCount = (count: number | null) => {
+    if (count === null || count === 0) return null;
+    return <span className="mode-count">{count}</span>;
+  };
 
   // Close branch picker on click outside
   useEffect(() => {
@@ -74,30 +87,30 @@ export function Header({
         <div className="mode-switcher">
           <button
             type="button"
-            className={mode === "branch" ? "active" : ""}
-            onClick={() => onModeChange("branch")}
-          >
-            Branch
-          </button>
-          <button
-            type="button"
             className={mode === "working" ? "active" : ""}
             onClick={() => onModeChange("working")}
           >
-            Working
+            Local{renderCount(modeCounts.working)}
+          </button>
+          <button
+            type="button"
+            className={mode === "branch" ? "active" : ""}
+            onClick={() => onModeChange("branch")}
+          >
+            Branch{renderCount(modeCounts.branch)}
           </button>
           <button
             type="button"
             className={mode === "pr" ? "active" : ""}
             onClick={() => onModeChange("pr")}
           >
-            PRs
+            PRs{renderCount(modeCounts.pr)}
           </button>
         </div>
-        <span className="branch">{diff?.branch}</span>
         {mode === "branch" && (
-          <div className="branch-selector">
-            <span className="compare-label">vs</span>
+          <div className="branch-comparison">
+            <span className="branch">{diff?.branch}</span>
+            <span className="compare-arrow">→</span>
             <button
               type="button"
               className="branch-selector-btn"
@@ -134,7 +147,12 @@ export function Header({
             )}
           </div>
         )}
-        {mode === "working" && <span className="commit">{diff?.commit.slice(0, 7)}</span>}
+        {mode === "working" && (
+          <div className="working-info">
+            <span className="branch">{diff?.branch}</span>
+            <span className="commit">@ {diff?.commit.slice(0, 7)}</span>
+          </div>
+        )}
         {mode === "pr" && diff?.pr_number !== undefined && (
           <span className="pr-info">
             <span className="pr-badge">#{diff.pr_number}</span>
