@@ -526,5 +526,15 @@ program
   });
 
 export function runCli(): void {
+  // Handle `cerebro .` or `cerebro /path` as shortcut for `cerebro open <path>`
+  const args = process.argv.slice(2);
+  if (args.length === 1 && !args[0].startsWith("-")) {
+    const maybeCommand = args[0];
+    const commands = program.commands.map((c) => c.name());
+    if (!commands.includes(maybeCommand)) {
+      // Not a known command - treat as path for `open`
+      process.argv.splice(2, 0, "open");
+    }
+  }
   program.parse();
 }
