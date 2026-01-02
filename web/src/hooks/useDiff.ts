@@ -52,7 +52,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<DiffMode>("branch");
+  const [mode, setMode] = useState<DiffMode>("working");
   const [branches, setBranches] = useState<string[]>([]);
   const [compareBranch, setCompareBranch] = useState<string | null>(null);
   const [prNumber, setPrNumber] = useState<number | null>(null);

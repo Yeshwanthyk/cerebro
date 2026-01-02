@@ -54,10 +54,10 @@ export function ShortcutsModal({ onClose }: ShortcutsModalProps) {
       <h4>Modes</h4>
       <ul>
         <li>
-          <kbd>1</kbd> Branch mode
+          <kbd>1</kbd> Local mode
         </li>
         <li>
-          <kbd>2</kbd> Working mode
+          <kbd>2</kbd> Branch mode
         </li>
         <li>
           <kbd>t</kbd> Toggle split/unified
