@@ -33,6 +33,17 @@ const STATUS_STYLES: Record<string, { label: string; color: string }> = {
 
 const DEFAULT_STATUS = { label: "Modified", color: "var(--color-modified)" };
 
+function splitPath(fullPath: string): { fileName: string; directory: string } {
+  const lastSlash = fullPath.lastIndexOf("/");
+  if (lastSlash === -1) {
+    return { fileName: fullPath, directory: "" };
+  }
+  return {
+    fileName: fullPath.slice(lastSlash + 1),
+    directory: fullPath.slice(0, lastSlash + 1),
+  };
+}
+
 export function FileCard({
   file,
   comments,
@@ -58,13 +69,17 @@ export function FileCard({
   const fileLevelThreads = commentThreads.filter(
     (thread) => thread.comment.line_number === undefined,
   );
+  const { fileName, directory } = splitPath(file.path);
 
   return (
     <div className={`file-card ${isFocused ? "focused" : ""} ${file.staged ? "staged" : ""}`}>
       <div className="file-header">
         <button type="button" className="file-header-main" onClick={onToggle}>
           <span className={`expand-icon ${isExpanded ? "expanded" : ""}`}>▶</span>
-          <span className="file-path">{file.path}</span>
+          <span className="file-path-wrapper">
+            <span className="file-name">{fileName}</span>
+            {directory && <span className="file-directory">{directory}</span>}
+          </span>
           <span className="file-status" style={{ color: status.color }}>
             {status.label}
           </span>
