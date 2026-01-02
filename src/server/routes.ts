@@ -22,6 +22,8 @@ import {
   handleResolveComment,
   handleGetNotes,
   handleDismissNote,
+  handleGetPRs,
+  handlePRReview,
 } from "./handlers";
 
 export type RouteHandler = (req: Request, url: URL) => Promise<Response>;
@@ -72,6 +74,10 @@ export const routes: Route[] = [
   // Notes
   { path: "/api/notes", method: "GET", handler: async (_req, url) => handleGetNotes(url) },
   { path: "/api/notes/dismiss", method: "POST", handler: async (req) => handleDismissNote(req) },
+
+  // Pull Requests
+  { path: "/api/prs", method: "GET", handler: async (_req, url) => handleGetPRs(url) },
+  { path: "/api/pr/review", method: "POST", handler: async (req, url) => handlePRReview(req, url) },
 ];
 
 /**

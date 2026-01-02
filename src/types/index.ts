@@ -18,7 +18,7 @@ export interface FileDiff {
 }
 
 // Diff response from API
-export type DiffMode = "branch" | "working";
+export type DiffMode = "branch" | "working" | "pr";
 
 export interface DiffResponse {
   files: FileDiff[];
@@ -28,6 +28,11 @@ export interface DiffResponse {
   remote_url?: string;
   mode: DiffMode;
   base_branch: string;
+  // PR-specific fields
+  pr_number?: number;
+  pr_title?: string;
+  pr_author?: string;
+  pr_url?: string;
 }
 
 // Repository status

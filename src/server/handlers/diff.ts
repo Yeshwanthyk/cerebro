@@ -3,8 +3,10 @@
  */
 import { getGitManager } from "../../git";
 import * as state from "../../state";
+import * as github from "../../github";
 import type { DiffMode } from "../../types";
 import { getCurrentRepoFromRequest, noRepoError } from "./utils";
+import { parseUnifiedDiff } from "./pr-diff.ts";
 
 export async function handleGetDiff(url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
@@ -13,6 +15,60 @@ export async function handleGetDiff(url: URL): Promise<Response> {
   }
 
   const mode = (url.searchParams.get("mode") || "branch") as DiffMode;
+
+  // Handle PR mode
+  if (mode === "pr") {
+    const prNumberStr = url.searchParams.get("pr");
+    if (!prNumberStr) {
+      return Response.json({ error: "PR number required for pr mode" }, { status: 400 });
+    }
+    const prNumber = parseInt(prNumberStr, 10);
+    if (Number.isNaN(prNumber)) {
+      return Response.json({ error: "Invalid PR number" }, { status: 400 });
+    }
+
+    try {
+      // Get PR metadata and diff in parallel
+      const [pr, rawDiff] = await Promise.all([
+        github.getPR(repo.path, prNumber),
+        github.getPRDiff(repo.path, prNumber),
+      ]);
+
+      // Get viewed state for PR files (using PR number as key)
+      const prKey = `pr-${prNumber}`;
+      const viewedState = await state.getViewedFiles(repo.id, prKey, prKey);
+
+      // Parse unified diff into FileDiff format
+      const files = parseUnifiedDiff(rawDiff, viewedState);
+
+      return Response.json({
+        files,
+        branch: pr.headRefName,
+        commit: "",
+        repo_path: repo.path,
+        mode: "pr",
+        base_branch: pr.baseRefName,
+        pr_number: pr.number,
+        pr_title: pr.title,
+        pr_author: pr.author.login,
+        pr_url: pr.url,
+      });
+    } catch (error) {
+      const err = error as { message: string; code?: string };
+      if (err.code === "AUTH_REQUIRED") {
+        return Response.json(
+          { error: "GitHub authentication required. Run 'gh auth login'" },
+          { status: 401 }
+        );
+      }
+      if (err.code === "NOT_FOUND") {
+        return Response.json({ error: `PR #${prNumberStr} not found` }, { status: 404 });
+      }
+      return Response.json({ error: err.message }, { status: 500 });
+    }
+  }
+
+  // Regular branch/working mode
   const compareBranch = url.searchParams.get("compare") || repo.baseBranch;
   const git = getGitManager(repo.path);
 

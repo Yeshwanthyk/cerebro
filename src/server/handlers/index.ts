@@ -28,3 +28,6 @@ export { handleGetComments, handleAddComment, handleResolveComment } from "./com
 
 // Notes
 export { handleGetNotes, handleDismissNote } from "./notes";
+
+// Pull Requests
+export { handleGetPRs, handlePRReview } from "./pr";

@@ -2,6 +2,7 @@ import { program } from "commander";
 import { relative, resolve } from "path";
 import { startServer, stopServer } from "../server";
 import * as state from "../state";
+import * as github from "../github";
 import { getGitManager, isGitRepo, getRepoName } from "../git";
 import type { Repository } from "../types";
 
@@ -479,6 +480,207 @@ notesCmd
       console.log(`Dismissed note: ${id}`);
     } else {
       console.error(`Note not found: ${id}`);
+      process.exit(1);
+    }
+  });
+
+// Pull Request commands
+const prCmd = program.command("pr").description("Work with GitHub pull requests");
+
+prCmd
+  .command("list")
+  .description("List open pull requests")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("--json", "Output as JSON for programmatic access")
+  .action(async (options: { repo?: string; json?: boolean }) => {
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    try {
+      const prs = await github.listPRs(repo.path);
+
+      if (options.json) {
+        console.log(JSON.stringify(prs, null, 2));
+        return;
+      }
+
+      if (prs.length === 0) {
+        console.log("No open pull requests.");
+        return;
+      }
+
+      console.log(`Open pull requests for ${repo.name}:\n`);
+
+      for (const pr of prs) {
+        console.log(`  #${pr.number} ${pr.title}`);
+        console.log(`    ${pr.headRefName} → ${pr.baseRefName}`);
+        console.log(`    by ${pr.author.login} | +${pr.additions} -${pr.deletions}`);
+        console.log(`    ${pr.url}`);
+        console.log();
+      }
+    } catch (error) {
+      const err = error as { message: string; code?: string };
+      if (err.code === "AUTH_REQUIRED") {
+        console.error("GitHub authentication required. Run 'gh auth login'");
+      } else {
+        console.error(`Error: ${err.message}`);
+      }
+      process.exit(1);
+    }
+  });
+
+prCmd
+  .command("view")
+  .description("View a pull request")
+  .argument("<number>", "PR number")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("--json", "Output as JSON for programmatic access")
+  .action(async (numberStr: string, options: { repo?: string; json?: boolean }) => {
+    const prNumber = parseInt(numberStr, 10);
+    if (Number.isNaN(prNumber)) {
+      console.error("Invalid PR number");
+      process.exit(1);
+    }
+
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    try {
+      const pr = await github.getPR(repo.path, prNumber);
+
+      if (options.json) {
+        console.log(JSON.stringify(pr, null, 2));
+        return;
+      }
+
+      console.log(`#${pr.number} ${pr.title}`);
+      console.log(`${pr.headRefName} → ${pr.baseRefName}`);
+      console.log(`by ${pr.author.login} | state: ${pr.state}`);
+      console.log(`+${pr.additions} -${pr.deletions} (${pr.changedFiles} files)`);
+      console.log(`\n${pr.url}\n`);
+
+      if (pr.body) {
+        console.log(pr.body);
+        console.log();
+      }
+
+      if (pr.files.length > 0) {
+        console.log("Changed files:");
+        for (const file of pr.files) {
+          console.log(`  ${file.path} (+${file.additions} -${file.deletions})`);
+        }
+      }
+    } catch (error) {
+      const err = error as { message: string; code?: string };
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+prCmd
+  .command("approve")
+  .description("Approve a pull request")
+  .argument("<number>", "PR number")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .option("-b, --body <text>", "Optional approval message")
+  .action(async (numberStr: string, options: { repo?: string; body?: string }) => {
+    const prNumber = parseInt(numberStr, 10);
+    if (Number.isNaN(prNumber)) {
+      console.error("Invalid PR number");
+      process.exit(1);
+    }
+
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    try {
+      await github.approvePR(repo.path, prNumber, options.body);
+      console.log(`✓ Approved PR #${prNumber}`);
+    } catch (error) {
+      const err = error as { message: string };
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+prCmd
+  .command("comment")
+  .description("Add a review comment to a pull request")
+  .argument("<number>", "PR number")
+  .argument("<body>", "Comment text")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .action(async (numberStr: string, body: string, options: { repo?: string }) => {
+    const prNumber = parseInt(numberStr, 10);
+    if (Number.isNaN(prNumber)) {
+      console.error("Invalid PR number");
+      process.exit(1);
+    }
+
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    try {
+      await github.commentOnPR(repo.path, prNumber, body);
+      console.log(`✓ Comment added to PR #${prNumber}`);
+    } catch (error) {
+      const err = error as { message: string };
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+prCmd
+  .command("request-changes")
+  .description("Request changes on a pull request")
+  .argument("<number>", "PR number")
+  .argument("<body>", "Comment explaining requested changes")
+  .option("-r, --repo <idOrPath>", "Repository ID or path")
+  .action(async (numberStr: string, body: string, options: { repo?: string }) => {
+    const prNumber = parseInt(numberStr, 10);
+    if (Number.isNaN(prNumber)) {
+      console.error("Invalid PR number");
+      process.exit(1);
+    }
+
+    let repo: Repository;
+    try {
+      repo = await resolveRepo(options.repo);
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+      return;
+    }
+
+    try {
+      await github.requestChanges(repo.path, prNumber, body);
+      console.log(`✓ Changes requested on PR #${prNumber}`);
+    } catch (error) {
+      const err = error as { message: string };
+      console.error(`Error: ${err.message}`);
       process.exit(1);
     }
   });

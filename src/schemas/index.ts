@@ -66,6 +66,21 @@ export const DismissNoteRequestSchema = z.object({
 });
 
 // =============================================================================
+// Pull Request Schemas
+// =============================================================================
+
+export const PRReviewRequestSchema = z.object({
+  pr: z.number().int().positive("PR number must be a positive integer"),
+  action: z.enum(["approve", "comment", "request-changes"]),
+  body: z.string().optional(),
+});
+
+export const PRCommentRequestSchema = z.object({
+  pr: z.number().int().positive("PR number must be a positive integer"),
+  body: z.string().min(1, "Comment body is required"),
+});
+
+// =============================================================================
 // Type exports (inferred from schemas)
 // =============================================================================
 
@@ -77,6 +92,8 @@ export type AddCommentRequest = z.infer<typeof AddCommentRequestSchema>;
 export type ResolveCommentRequest = z.infer<typeof ResolveCommentRequestSchema>;
 export type AddNoteRequest = z.infer<typeof AddNoteRequestSchema>;
 export type DismissNoteRequest = z.infer<typeof DismissNoteRequestSchema>;
+export type PRReviewRequest = z.infer<typeof PRReviewRequestSchema>;
+export type PRCommentRequest = z.infer<typeof PRCommentRequestSchema>;
 
 // =============================================================================
 // Validation Helper

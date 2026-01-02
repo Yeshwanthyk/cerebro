@@ -393,7 +393,7 @@ describe("comments", () => {
   });
 
   it("resolveComment returns false for unknown ID", async () => {
-    const repo = await state.addRepo("/tmp/comments-repo", "comments", "main");
+    await state.addRepo("/tmp/comments-repo", "comments", "main");
     const success = await state.resolveComment("nonexistent-id");
     expect(success).toBe(false);
   });
@@ -540,7 +540,7 @@ describe("notes", () => {
   });
 
   it("dismissNote returns false for unknown ID", async () => {
-    const repo = await state.addRepo("/tmp/notes-repo", "notes", "main");
+    await state.addRepo("/tmp/notes-repo", "notes", "main");
     const success = await state.dismissNote("nonexistent-id");
     expect(success).toBe(false);
   });
