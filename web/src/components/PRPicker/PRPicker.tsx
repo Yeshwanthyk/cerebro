@@ -9,6 +9,7 @@ interface PRPickerProps {
   selectedPR: number | null;
   onFilterChange: (filter: PRFilter) => void;
   onSelectPR: (pr: number) => void;
+  onClearSelection: () => void;
   onRefresh: () => void;
 }
 
@@ -26,8 +27,30 @@ export function PRPicker({
   selectedPR,
   onFilterChange,
   onSelectPR,
+  onClearSelection,
   onRefresh,
 }: PRPickerProps) {
+  const selectedPRData = prs.find((pr) => pr.number === selectedPR);
+
+  // Collapsed view when PR is selected
+  if (selectedPR !== null && selectedPRData) {
+    return (
+      <div className="pr-picker pr-picker-collapsed">
+        <button
+          type="button"
+          className="pr-back-btn"
+          onClick={onClearSelection}
+        >
+          ← Back to PRs
+        </button>
+        <div className="pr-selected-info">
+          <span className="pr-number">#{selectedPRData.number}</span>
+          <span className="pr-title">{selectedPRData.title}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pr-picker">
       <div className="pr-filter-tabs">
