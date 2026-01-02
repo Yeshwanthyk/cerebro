@@ -99,6 +99,41 @@ export default function App() {
   const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [modeCounts, setModeCounts] = useState<{ branch: number | null; working: number | null; pr: number | null }>({
+    branch: null,
+    working: null,
+    pr: null,
+  });
+
+  // Fetch counts for all modes
+  useEffect(() => {
+    if (!currentRepo) return;
+
+    const fetchCounts = async () => {
+      try {
+        // Fetch working count
+        const workingRes = await fetch(`/api/diff?repo=${currentRepo}&mode=working`);
+        if (workingRes.ok) {
+          const data = await workingRes.json() as { files?: unknown[] };
+          setModeCounts((prev) => ({ ...prev, working: data.files?.length ?? 0 }));
+        }
+
+        // Fetch branch count
+        const branchRes = await fetch(`/api/diff?repo=${currentRepo}&mode=branch`);
+        if (branchRes.ok) {
+          const data = await branchRes.json() as { files?: unknown[] };
+          setModeCounts((prev) => ({ ...prev, branch: data.files?.length ?? 0 }));
+        }
+
+        // PR count comes from prs array
+        setModeCounts((prev) => ({ ...prev, pr: prs.length > 0 ? prs.length : null }));
+      } catch {
+        // ignore errors
+      }
+    };
+
+    void fetchCounts();
+  }, [currentRepo, prs.length]);
 
   // Auto-dismiss notifications
   useEffect(() => {
@@ -254,11 +289,11 @@ export default function App() {
           break;
         case "1":
           e.preventDefault();
-          setMode("branch");
+          setMode("working");
           break;
         case "2":
           e.preventDefault();
-          setMode("working");
+          setMode("branch");
           break;
         case "?":
           e.preventDefault();
@@ -417,20 +452,20 @@ export default function App() {
         disabled: !focusedFile || !expandedFiles.has(focusedFile.path),
       },
       {
-        id: "branch-mode",
-        label: "Switch to Branch mode",
+        id: "local-mode",
+        label: "Switch to Local mode",
         shortcut: "1",
-        category: "settings" as const,
-        action: () => setMode("branch"),
-        disabled: mode === "branch",
-      },
-      {
-        id: "working-mode",
-        label: "Switch to Working mode",
-        shortcut: "2",
         category: "settings" as const,
         action: () => setMode("working"),
         disabled: mode === "working",
+      },
+      {
+        id: "branch-mode",
+        label: "Switch to Branch mode",
+        shortcut: "2",
+        category: "settings" as const,
+        action: () => setMode("branch"),
+        disabled: mode === "branch",
       },
       {
         id: "toggle-diff-style",
@@ -553,6 +588,7 @@ export default function App() {
         branches={branches}
         compareBranch={compareBranch}
         hasStaged={stagedFiles.length > 0}
+        modeCounts={modeCounts}
         onRepoSelect={handleRepoSelect}
         onAddRepo={handleAddRepo}
         onRemoveRepo={handleRemoveRepo}
@@ -585,6 +621,10 @@ export default function App() {
           onSelectPR={(pr) => {
             setSelectedPR(pr);
           }}
+          onClearSelection={() => {
+            setSelectedPR(null);
+            setPrNumber(null);
+          }}
           onRefresh={() => void refreshPRs()}
         />
       )}
@@ -592,8 +632,36 @@ export default function App() {
       <main className="file-list">
         {files.length === 0 ? (
           <div className="empty">
-            <p>No changes</p>
-            <p className="muted">Your branch is up to date</p>
+            {mode === "working" && (
+              <>
+                <p>No uncommitted changes</p>
+                <p className="muted">Working directory is clean</p>
+              </>
+            )}
+            {mode === "branch" && diff?.branch === (compareBranch ?? "main") && (
+              <>
+                <p>You're on {diff?.branch ?? "main"}</p>
+                <p className="muted">Switch to a feature branch to see diff</p>
+              </>
+            )}
+            {mode === "branch" && diff?.branch !== (compareBranch ?? "main") && (
+              <>
+                <p>Branch is up to date</p>
+                <p className="muted">No commits ahead of {compareBranch ?? "main"}</p>
+              </>
+            )}
+            {mode === "pr" && selectedPR === null && (
+              <>
+                <p>Select a PR to review</p>
+                <p className="muted">Choose from the list above</p>
+              </>
+            )}
+            {mode === "pr" && selectedPR !== null && (
+              <>
+                <p>No files in this PR</p>
+                <p className="muted">This PR has no changed files</p>
+              </>
+            )}
           </div>
         ) : (
           files.map((file, index) => (
