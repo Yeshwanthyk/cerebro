@@ -483,6 +483,39 @@ notesCmd
     }
   });
 
+// Open command - opens the Mac app with the specified repo
+program
+  .command("open")
+  .description("Open the Cerebro Mac app with a repository")
+  .argument("[path]", "Repository path (defaults to current directory)")
+  .action(async (path?: string) => {
+    const repoPath = resolve(path || ".");
+
+    if (!(await isGitRepo(repoPath))) {
+      console.error(`Error: ${repoPath} is not a git repository`);
+      process.exit(1);
+    }
+
+    // Add/get repo
+    const git = getGitManager(repoPath);
+    const baseBranch = await git.getDefaultBranch();
+    const name = getRepoName(repoPath);
+    const repo = await state.addRepo(repoPath, name, baseBranch);
+
+    // Set as current
+    await state.setCurrentRepo(repo.id);
+
+    // Quit existing app instance and reopen
+    const quit = Bun.spawn(["osascript", "-e", 'quit app "Cerebro"'], { stderr: "ignore" });
+    await quit.exited;
+    await Bun.sleep(300);
+
+    const open = Bun.spawn(["open", "-a", "Cerebro"]);
+    await open.exited;
+
+    console.log(`Opened Cerebro with ${name}`);
+  });
+
 // Version command with more detail
 program
   .command("version")
