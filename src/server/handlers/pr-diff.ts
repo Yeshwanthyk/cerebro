@@ -33,9 +33,7 @@ function parseFileChunk(chunk: string, viewedState: ViewedState): FileDiff | nul
   const headerMatch = firstLine.match(/^diff --git a\/(.+) b\/(.+)$/);
   if (!headerMatch?.[1] || !headerMatch[2]) return null;
 
-  const oldPath = headerMatch[1];
-  const newPath = headerMatch[2];
-  const path = newPath;
+  const path = headerMatch[2];
 
   // Determine status from diff metadata
   let status: FileDiff["status"] = "modified";
@@ -81,7 +79,7 @@ function parseFileChunk(chunk: string, viewedState: ViewedState): FileDiff | nul
     deletions,
     patch,
     viewed: viewedState[path] ?? false,
-    old_file: status !== "added" ? { name: oldPath, contents: "" } : undefined,
-    new_file: status !== "deleted" ? { name: newPath, contents: "" } : undefined,
+    // Don't include old_file/new_file with empty contents - 
+    // DiffView will fall back to showing the patch directly
   };
 }
