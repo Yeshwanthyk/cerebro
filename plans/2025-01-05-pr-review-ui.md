@@ -10,12 +10,12 @@
   - No GitHub comments integration (local-only for now)
 
 ## Progress Tracking
-- [ ] Phase 1: Backend - Add PR list filters
-- [ ] Phase 2: Types & API - Frontend type updates
-- [ ] Phase 3: Hook - Create usePRs hook
-- [ ] Phase 4: Components - PR picker UI
-- [ ] Phase 5: Integration - Wire into App + Header
-- [ ] Phase 6: Actions - Approve/Comment/Request Changes UI
+- [x] Phase 1: Backend - Add PR list filters
+- [x] Phase 2: Types & API - Frontend type updates
+- [x] Phase 3: Hook - Create usePRs hook
+- [x] Phase 4: Components - PR picker UI
+- [x] Phase 5: Integration - Wire into App + Header
+- [x] Phase 6: Actions - Approve/Comment/Request Changes UI
 
 ## Overview
 Add PR review mode to Cerebro UI. Users can:

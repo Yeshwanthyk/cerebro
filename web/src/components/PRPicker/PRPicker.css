@@ -1,0 +1,139 @@
+.pr-picker {
+  margin-bottom: 16px;
+}
+
+.pr-filter-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius);
+  padding: 3px;
+  width: fit-content;
+}
+
+.pr-filter-tab {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.pr-filter-tab.active {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+}
+
+.pr-filter-tab:hover:not(.active) {
+  color: var(--color-text-secondary);
+}
+
+.pr-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.pr-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.pr-item:hover {
+  border-color: var(--color-accent);
+  background: var(--color-bg-tertiary);
+}
+
+.pr-item.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.pr-number {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.pr-title {
+  font-size: 13px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.pr-stats {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.pr-additions {
+  color: var(--color-added);
+}
+
+.pr-deletions {
+  color: var(--color-deleted);
+}
+
+.pr-loading,
+.pr-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.pr-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: color-mix(in srgb, var(--color-deleted) 10%, transparent);
+  border: 1px solid var(--color-deleted);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.pr-error span {
+  color: var(--color-deleted);
+  font-size: 13px;
+}
+
+.pr-error button {
+  padding: 4px 8px;
+  border: 1px solid var(--color-deleted);
+  background: transparent;
+  color: var(--color-deleted);
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}

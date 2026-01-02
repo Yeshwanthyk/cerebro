@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Comment, DiffResponse, FileDiff, Note } from "../api/types";
 
-type DiffMode = "branch" | "working";
+type DiffMode = "branch" | "working" | "pr";
 
 interface CachedData {
   diff: DiffResponse | null;
@@ -21,6 +21,8 @@ interface UseDiffResult {
   branches: string[];
   compareBranch: string | null;
   setCompareBranch: (branch: string | null) => void;
+  prNumber: number | null;
+  setPrNumber: (pr: number | null) => void;
   refresh: () => Promise<void>;
   loadFileDiff: (filePath: string) => Promise<FileDiff | null>;
   toggleViewed: (filePath: string, viewed: boolean) => Promise<void>;
@@ -38,8 +40,9 @@ interface UseDiffResult {
   commit: (message: string) => Promise<void>;
 }
 
-// Cache key includes mode and branch for branch mode
-function getCacheKey(mode: DiffMode, compareBranch: string | null): string {
+// Cache key includes mode and branch for branch mode, or PR number for PR mode
+function getCacheKey(mode: DiffMode, compareBranch: string | null, prNumber: number | null): string {
+  if (mode === "pr") return `pr:${prNumber ?? "none"}`;
   return mode === "branch" ? `branch:${compareBranch ?? "default"}` : mode;
 }
 
@@ -52,6 +55,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
   const [mode, setMode] = useState<DiffMode>("branch");
   const [branches, setBranches] = useState<string[]>([]);
   const [compareBranch, setCompareBranch] = useState<string | null>(null);
+  const [prNumber, setPrNumber] = useState<number | null>(null);
 
   // Cache per mode/branch combination
   const cacheRef = useRef<Map<string, CachedData>>(new Map());
@@ -82,20 +86,32 @@ export function useDiff(repoId?: string | null): UseDiffResult {
       .catch(() => setBranches([]));
   }, [repoId, buildUrl]);
 
-  // Reset compareBranch when repo changes
+  // Reset compareBranch and prNumber when repo changes
+  const prevRepoIdRef = useRef(repoId);
   useEffect(() => {
-    setCompareBranch(null);
+    if (prevRepoIdRef.current !== repoId) {
+      prevRepoIdRef.current = repoId;
+      setCompareBranch(null);
+      setPrNumber(null);
+    }
   }, [repoId]);
 
   const fetchData = useCallback(
-    async (currentMode: DiffMode, currentCompareBranch: string | null, background = false) => {
+    async (currentMode: DiffMode, currentCompareBranch: string | null, currentPrNumber: number | null, background = false) => {
       if (!repoId) {
         setLoading(false);
         setDiff(null);
         return;
       }
 
-      const cacheKey = getCacheKey(currentMode, currentCompareBranch);
+      // Skip fetch if PR mode but no PR selected
+      if (currentMode === "pr" && !currentPrNumber) {
+        setLoading(false);
+        setDiff(null);
+        return;
+      }
+
+      const cacheKey = getCacheKey(currentMode, currentCompareBranch, currentPrNumber);
 
       // Show cached data immediately if available (unless background refresh)
       if (!background) {
@@ -112,7 +128,9 @@ export function useDiff(repoId?: string | null): UseDiffResult {
 
       try {
         const diffParams: Record<string, string> = { mode: currentMode };
-        if (currentCompareBranch) {
+        if (currentMode === "pr" && currentPrNumber) {
+          diffParams.pr = String(currentPrNumber);
+        } else if (currentCompareBranch) {
           diffParams.compare = currentCompareBranch;
         }
         const fetches: Promise<Response>[] = [
@@ -185,8 +203,8 @@ export function useDiff(repoId?: string | null): UseDiffResult {
   }, []);
 
   useEffect(() => {
-    void fetchData(mode, compareBranch);
-  }, [mode, compareBranch, fetchData]);
+    void fetchData(mode, compareBranch, prNumber);
+  }, [mode, compareBranch, prNumber, fetchData]);
 
   // Background refresh every 3s to keep cache fresh
   useEffect(() => {
@@ -195,23 +213,25 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     }
 
     const interval = setInterval(() => {
-      void fetchData(mode, compareBranch, true);
+      void fetchData(mode, compareBranch, prNumber, true);
     }, 3000);
     return () => {
       clearInterval(interval);
     };
-  }, [mode, compareBranch, repoId, fetchData]);
+  }, [mode, compareBranch, prNumber, repoId, fetchData]);
 
   const refresh = useCallback(
-    () => fetchData(mode, compareBranch),
-    [mode, compareBranch, fetchData],
+    () => fetchData(mode, compareBranch, prNumber),
+    [mode, compareBranch, prNumber, fetchData],
   );
 
   const loadFileDiff = useCallback(
     async (filePath: string): Promise<FileDiff | null> => {
       try {
         const params: Record<string, string> = { mode, file: filePath };
-        if (compareBranch) {
+        if (mode === "pr" && prNumber) {
+          params.pr = String(prNumber);
+        } else if (compareBranch) {
           params.compare = compareBranch;
         }
         const res = await fetch(buildUrl("/api/file-diff", params));
@@ -235,7 +255,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
         return null;
       }
     },
-    [mode, buildUrl, compareBranch],
+    [mode, buildUrl, compareBranch, prNumber],
   );
 
   const toggleViewed = useCallback(
@@ -320,9 +340,9 @@ export function useDiff(repoId?: string | null): UseDiffResult {
       if (!res.ok) {
         throw new Error("Failed to stage");
       }
-      await fetchData(mode, compareBranch);
+      await fetchData(mode, compareBranch, prNumber);
     },
-    [mode, compareBranch, fetchData, buildUrl],
+    [mode, compareBranch, prNumber, fetchData, buildUrl],
   );
 
   const unstageFile = useCallback(
@@ -335,9 +355,9 @@ export function useDiff(repoId?: string | null): UseDiffResult {
       if (!res.ok) {
         throw new Error("Failed to unstage");
       }
-      await fetchData(mode, compareBranch);
+      await fetchData(mode, compareBranch, prNumber);
     },
-    [mode, compareBranch, fetchData, buildUrl],
+    [mode, compareBranch, prNumber, fetchData, buildUrl],
   );
 
   const discardFile = useCallback(
@@ -350,9 +370,9 @@ export function useDiff(repoId?: string | null): UseDiffResult {
       if (!res.ok) {
         throw new Error("Failed to discard");
       }
-      await fetchData(mode, compareBranch);
+      await fetchData(mode, compareBranch, prNumber);
     },
-    [mode, compareBranch, fetchData, buildUrl],
+    [mode, compareBranch, prNumber, fetchData, buildUrl],
   );
 
   const commit = useCallback(
@@ -365,9 +385,9 @@ export function useDiff(repoId?: string | null): UseDiffResult {
       if (!res.ok) {
         throw new Error("Failed to commit");
       }
-      await fetchData(mode, compareBranch);
+      await fetchData(mode, compareBranch, prNumber);
     },
-    [mode, compareBranch, fetchData, buildUrl],
+    [mode, compareBranch, prNumber, fetchData, buildUrl],
   );
 
   return {
@@ -381,6 +401,8 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     branches,
     compareBranch,
     setCompareBranch,
+    prNumber,
+    setPrNumber,
     refresh,
     loadFileDiff,
     toggleViewed,

@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
 import { Icon } from "../Icon";
+import { PRActions } from "../PRActions";
 import { RepoPicker } from "../RepoPicker";
 import type { Repository, DiffResponse } from "../../api/types";
 import "./Header.css";
+
+type DiffMode = "branch" | "working" | "pr";
 
 interface HeaderProps {
   repos: Repository[];
   currentRepo: string | null;
   diff: DiffResponse | null;
-  mode: "branch" | "working";
+  mode: DiffMode;
   diffStyle: "split" | "unified";
   branches: string[];
   compareBranch: string | null;
@@ -16,11 +19,13 @@ interface HeaderProps {
   onRepoSelect: (id: string) => void;
   onAddRepo: (path: string) => Promise<void>;
   onRemoveRepo: (id: string) => void;
-  onModeChange: (mode: "branch" | "working") => void;
+  onModeChange: (mode: DiffMode) => void;
   onDiffStyleChange: (style: "split" | "unified") => void;
   onCompareBranchChange: (branch: string) => void;
   onCommitClick: () => void;
   onRefresh: () => void;
+  onPRReviewSuccess?: (message: string) => void;
+  onPRReviewError?: (error: string) => void;
 }
 
 export function Header({
@@ -40,6 +45,8 @@ export function Header({
   onCompareBranchChange,
   onCommitClick,
   onRefresh,
+  onPRReviewSuccess,
+  onPRReviewError,
 }: HeaderProps) {
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const currentRepoData = repos.find((r) => r.id === currentRepo);
@@ -78,6 +85,13 @@ export function Header({
             onClick={() => onModeChange("working")}
           >
             Working
+          </button>
+          <button
+            type="button"
+            className={mode === "pr" ? "active" : ""}
+            onClick={() => onModeChange("pr")}
+          >
+            PRs
           </button>
         </div>
         <span className="branch">{diff?.branch}</span>
@@ -121,8 +135,22 @@ export function Header({
           </div>
         )}
         {mode === "working" && <span className="commit">{diff?.commit.slice(0, 7)}</span>}
+        {mode === "pr" && diff?.pr_number !== undefined && (
+          <span className="pr-info">
+            <span className="pr-badge">#{diff.pr_number}</span>
+            <span className="pr-title-header">{diff.pr_title}</span>
+          </span>
+        )}
       </div>
       <div className="header-right">
+        {mode === "pr" && diff?.pr_number !== undefined && currentRepo !== null && (
+          <PRActions
+            prNumber={diff.pr_number}
+            repoId={currentRepo}
+            onSuccess={onPRReviewSuccess ?? (() => {})}
+            onError={onPRReviewError ?? (() => {})}
+          />
+        )}
         <button
           type="button"
           className="commit-btn"

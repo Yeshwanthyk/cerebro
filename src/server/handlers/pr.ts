@@ -17,9 +17,15 @@ export async function handleGetPRs(url: URL): Promise<Response> {
     return Response.json({ error: "No repository selected" }, { status: 400 });
   }
 
+  const filterParam = url.searchParams.get("filter");
+  const filter: github.PRFilter =
+    filterParam === "mine" || filterParam === "review-requested"
+      ? filterParam
+      : "all";
+
   try {
-    const prs = await github.listPRs(repo.path);
-    return Response.json({ prs, repo_path: repo.path });
+    const prs = await github.listPRs(repo.path, filter);
+    return Response.json({ prs, repo_path: repo.path, filter });
   } catch (error) {
     const err = error as { message: string; code?: string };
     if (err.code === "AUTH_REQUIRED") {

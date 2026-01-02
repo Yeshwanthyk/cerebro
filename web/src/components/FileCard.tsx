@@ -12,7 +12,7 @@ interface FileCardProps {
   isExpanded: boolean;
   isLoading?: boolean;
   isFocused: boolean;
-  mode: "branch" | "working";
+  mode: "branch" | "working" | "pr";
   onToggle: () => void;
   onToggleViewed: () => void;
   onResolveComment: (id: string) => void;

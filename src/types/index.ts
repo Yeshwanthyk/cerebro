@@ -101,3 +101,21 @@ export interface RepoState {
   comments: Comment[];
   notes: Note[];
 }
+
+// Pull Request types
+export interface PullRequest {
+  number: number;
+  title: string;
+  headRefName: string;
+  baseRefName: string;
+  author: { login: string };
+  createdAt: string;
+  url: string;
+  state: string;
+  additions: number;
+  deletions: number;
+  changedFiles: number;
+  body: string;
+}
+
+export type PRFilter = "all" | "mine" | "review-requested";

@@ -3,20 +3,10 @@
  * Uses `gh` CLI tool for all GitHub interactions
  */
 
-export interface PullRequest {
-  number: number;
-  title: string;
-  headRefName: string;
-  baseRefName: string;
-  author: { login: string };
-  createdAt: string;
-  url: string;
-  state: string;
-  additions: number;
-  deletions: number;
-  changedFiles: number;
-  body: string;
-}
+import type { PullRequest, PRFilter } from "../types";
+
+// Re-export for convenience
+export type { PullRequest, PRFilter };
 
 export interface PRFile {
   path: string;
@@ -91,16 +81,30 @@ async function ghText(args: string[], cwd: string): Promise<string> {
 /**
  * List open pull requests for a repository
  */
-export async function listPRs(repoPath: string): Promise<PullRequest[]> {
-  const prs = await ghJson<PullRequest[]>(
-    [
-      "pr",
-      "list",
-      "--json",
-      "number,title,headRefName,baseRefName,author,createdAt,url,state,additions,deletions,changedFiles,body",
-    ],
-    repoPath
-  );
+export async function listPRs(
+  repoPath: string,
+  filter: PRFilter = "all"
+): Promise<PullRequest[]> {
+  const args = [
+    "pr",
+    "list",
+    "--json",
+    "number,title,headRefName,baseRefName,author,createdAt,url,state,additions,deletions,changedFiles,body",
+  ];
+
+  switch (filter) {
+    case "mine":
+      args.push("--author", "@me");
+      break;
+    case "review-requested":
+      args.push("--search", "review-requested:@me");
+      break;
+    case "all":
+      // No additional filter
+      break;
+  }
+
+  const prs = await ghJson<PullRequest[]>(args, repoPath);
   return prs;
 }
 

@@ -11,8 +11,10 @@ import {
   CommitModal,
 } from "./components/Modals";
 import { useDiff } from "./hooks/useDiff";
+import { usePRs } from "./hooks/usePRs";
 import { useRepos } from "./hooks/useRepos";
 import { buildCommentThreads } from "./utils/commentThreads";
+import { PRPicker } from "./components/PRPicker";
 
 const HALF_PAGE_SIZE = 10;
 
@@ -48,20 +50,63 @@ export default function App() {
     commit,
     loadFileDiff,
     refresh,
+    setPrNumber,
   } = useDiff(currentRepo);
+
+  const {
+    prs,
+    loading: prsLoading,
+    error: prsError,
+    filter: prFilter,
+    setFilter: setPrFilter,
+    selectedPR,
+    setSelectedPR,
+    refresh: refreshPRs,
+  } = usePRs(currentRepo);
 
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   // Clear expanded files when mode or compare branch changes
+  const prevModeRef = useRef(mode);
+  const prevBranchRef = useRef(compareBranch);
+  const prevRepoRef = useRef(currentRepo);
   useEffect(() => {
-    setExpandedFiles(new Set());
-    setFocusedIndex(0);
+    if (prevModeRef.current !== mode || prevBranchRef.current !== compareBranch || prevRepoRef.current !== currentRepo) {
+      prevModeRef.current = mode;
+      prevBranchRef.current = compareBranch;
+      prevRepoRef.current = currentRepo;
+      setExpandedFiles(new Set());
+      setFocusedIndex(0);
+    }
   }, [mode, compareBranch, currentRepo]);
+
+  // Sync PR selection with diff hook
+  useEffect(() => {
+    if (mode === "pr" && selectedPR !== null) {
+      setPrNumber(selectedPR);
+    }
+  }, [mode, selectedPR, setPrNumber]);
+
+  // Clear PR selection when leaving PR mode
+  useEffect(() => {
+    if (mode !== "pr") {
+      setSelectedPR(null);
+    }
+  }, [mode, setSelectedPR]);
 
   const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Auto-dismiss notifications
+  useEffect(() => {
+    if (notification !== null) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
   const [showCommitModal, setShowCommitModal] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
   const [activeComment, setActiveComment] = useState<{
@@ -510,9 +555,33 @@ export default function App() {
         onCompareBranchChange={setCompareBranch}
         onCommitClick={() => setShowCommitModal(true)}
         onRefresh={() => void refresh()}
+        onPRReviewSuccess={(msg) => setNotification({ type: "success", message: msg })}
+        onPRReviewError={(msg) => setNotification({ type: "error", message: msg })}
       />
 
+      {notification !== null && (
+        <div className={`notification ${notification.type}`}>
+          {notification.message}
+          <button type="button" onClick={() => setNotification(null)}>×</button>
+        </div>
+      )}
+
       <Progress viewedCount={viewedCount} totalCount={files.length} />
+
+      {mode === "pr" && (
+        <PRPicker
+          prs={prs}
+          loading={prsLoading}
+          error={prsError}
+          filter={prFilter}
+          selectedPR={selectedPR}
+          onFilterChange={setPrFilter}
+          onSelectPR={(pr) => {
+            setSelectedPR(pr);
+          }}
+          onRefresh={() => void refreshPRs()}
+        />
+      )}
 
       <main className="file-list">
         {files.length === 0 ? (

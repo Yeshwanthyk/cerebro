@@ -2,6 +2,19 @@
  * API types - re-exports shared types and adds frontend-specific ones
  */
 
+import type {
+  FileContents,
+  FileDiff,
+  DiffMode,
+  DiffResponse,
+  StatusResponse,
+  Comment,
+  Note,
+  Repository,
+  PullRequest,
+  PRFilter,
+} from "@cerebro/types";
+
 // Re-export all shared types from backend
 export type {
   FileContents,
@@ -12,7 +25,9 @@ export type {
   Comment,
   Note,
   Repository,
-} from "@cerebro/types";
+  PullRequest,
+  PRFilter,
+};
 
 // Frontend-specific types
 
@@ -20,6 +35,15 @@ export type {
  * Response from GET /api/repos
  */
 export interface ReposResponse {
-  repos: import("@cerebro/types").Repository[];
+  repos: Repository[];
   currentRepo?: string;
+}
+
+/**
+ * Response from GET /api/prs
+ */
+export interface PRsResponse {
+  prs: PullRequest[];
+  repo_path: string;
+  filter: PRFilter;
 }

@@ -1,0 +1,123 @@
+.pr-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pr-action-btn {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pr-action-btn.approve {
+  background: color-mix(in srgb, var(--color-added) 15%, transparent);
+  border: 1px solid var(--color-added);
+  color: var(--color-added);
+}
+
+.pr-action-btn.approve:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-added) 25%, transparent);
+}
+
+.pr-action-btn.comment {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.pr-action-btn.comment:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.pr-action-btn.request-changes {
+  background: transparent;
+  border: 1px solid var(--color-deleted);
+  color: var(--color-deleted);
+}
+
+.pr-action-btn.request-changes:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-deleted) 15%, transparent);
+}
+
+.pr-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Comment Modal */
+.pr-comment-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.pr-comment-modal {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
+  width: 90%;
+  max-width: 500px;
+}
+
+.pr-comment-modal h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pr-comment-modal textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.pr-comment-modal textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.pr-comment-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.pr-comment-modal-actions button {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pr-comment-modal-actions .cancel {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.pr-comment-modal-actions .submit {
+  background: var(--color-accent);
+  border: none;
+  color: white;
+}
+
+.pr-comment-modal-actions .submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
