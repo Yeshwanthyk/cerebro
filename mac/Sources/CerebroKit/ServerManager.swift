@@ -48,9 +48,23 @@ public final class ServerManager: ObservableObject, Sendable {
         process.arguments = ["start", "--port", String(port)]
         process.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
 
-        // Setup environment
+        // Setup environment with expanded PATH for CLI tools like gh
         var environment = ProcessInfo.processInfo.environment
         environment["HOME"] = FileManager.default.homeDirectoryForCurrentUser.path
+        
+        // GUI apps don't inherit shell PATH - add common tool locations
+        let existingPath = environment["PATH"] ?? "/usr/bin:/bin"
+        let additionalPaths = [
+            "/opt/homebrew/bin",           // Homebrew on Apple Silicon
+            "/usr/local/bin",              // Homebrew on Intel / user binaries
+            "/opt/homebrew/sbin",
+            "/usr/local/sbin",
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".local/bin").path
+        ]
+        let expandedPath = (additionalPaths + [existingPath]).joined(separator: ":")
+        environment["PATH"] = expandedPath
+        
         process.environment = environment
 
         // Capture output
