@@ -12,25 +12,16 @@ export function ShortcutsModal({ onClose }: ShortcutsModalProps) {
       <h4>Navigation</h4>
       <ul>
         <li>
-          <kbd>j</kbd> / <kbd>k</kbd> Next / previous file
-        </li>
-        <li>
-          <kbd>gg</kbd> First file
+          <kbd>J</kbd> / <kbd>K</kbd> Next / previous file
         </li>
         <li>
           <kbd>G</kbd> Last file
         </li>
         <li>
-          <kbd>Ctrl+d</kbd> / <kbd>Ctrl+u</kbd> Half-page down / up
+          <kbd>Enter</kbd> / <kbd>o</kbd> Toggle file
         </li>
         <li>
-          <kbd>l</kbd> / <kbd>Enter</kbd> Expand file
-        </li>
-        <li>
-          <kbd>h</kbd> Collapse file
-        </li>
-        <li>
-          <kbd>o</kbd> Toggle file
+          <kbd>Esc</kbd> Collapse all files
         </li>
       </ul>
       <h4>Actions</h4>
@@ -50,14 +41,20 @@ export function ShortcutsModal({ onClose }: ShortcutsModalProps) {
         <li>
           <kbd>c</kbd> Commit staged
         </li>
+        <li>
+          <kbd>r</kbd> Refresh
+        </li>
       </ul>
       <h4>Modes</h4>
       <ul>
         <li>
-          <kbd>1</kbd> Local mode
+          <kbd>1</kbd> Local
         </li>
         <li>
-          <kbd>2</kbd> Branch mode
+          <kbd>2</kbd> Branch
+        </li>
+        <li>
+          <kbd>3</kbd> PRs
         </li>
         <li>
           <kbd>t</kbd> Toggle split/unified

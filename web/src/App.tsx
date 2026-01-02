@@ -16,8 +16,6 @@ import { useRepos } from "./hooks/useRepos";
 import { buildCommentThreads } from "./utils/commentThreads";
 import { PRPicker } from "./components/PRPicker";
 
-const HALF_PAGE_SIZE = 10;
-
 export default function App() {
   const {
     repos,
@@ -210,6 +208,11 @@ export default function App() {
         return;
       }
 
+      // Let j/k pass through for natural scrolling
+      if (e.key === "j" || e.key === "k") {
+        return;
+      }
+
       const now = Date.now();
       const lastKey = lastKeyRef.current;
       const timeSinceLastKey = now - lastKeyTimeRef.current;
@@ -227,48 +230,25 @@ export default function App() {
       const focusedFile = files[focusedIndex];
 
       switch (e.key) {
-        case "j":
+        case "J":
           e.preventDefault();
           setFocusedIndex((i) => Math.min(i + 1, files.length - 1));
           break;
-        case "k":
+        case "K":
           e.preventDefault();
           setFocusedIndex((i) => Math.max(i - 1, 0));
           break;
         case "o":
         case "Enter":
-        case "l":
           e.preventDefault();
           if (focusedFile) void toggleFile(focusedFile.path);
           break;
-        case "h":
-          e.preventDefault();
-          if (focusedFile && expandedFiles.has(focusedFile.path)) {
-            setExpandedFiles((prev) => {
-              const next = new Set(prev);
-              next.delete(focusedFile.path);
-              return next;
-            });
-          }
-          break;
-        case "g":
-          e.preventDefault();
-          break;
         case "G":
           e.preventDefault();
-          if (files.length > 0) setFocusedIndex(files.length - 1);
-          break;
-        case "d":
-          if (e.ctrlKey) {
-            e.preventDefault();
-            setFocusedIndex((i) => Math.min(i + HALF_PAGE_SIZE, files.length - 1));
-          }
+          if (e.shiftKey && files.length > 0) setFocusedIndex(files.length - 1);
           break;
         case "u":
-          if (e.ctrlKey) {
-            e.preventDefault();
-            setFocusedIndex((i) => Math.max(i - HALF_PAGE_SIZE, 0));
-          } else if (focusedFile && mode === "working" && focusedFile.staged) {
+          if (focusedFile && mode === "working" && focusedFile.staged) {
             e.preventDefault();
             void unstageFile(focusedFile.path);
           }
@@ -295,6 +275,15 @@ export default function App() {
           e.preventDefault();
           setMode("branch");
           break;
+        case "3":
+          e.preventDefault();
+          setMode("pr");
+          break;
+        case "r":
+          e.preventDefault();
+          void refresh();
+          if (mode === "pr") void refreshPRs();
+          break;
         case "?":
           e.preventDefault();
           setShowShortcuts((s) => !s);
@@ -309,17 +298,22 @@ export default function App() {
           break;
         case "Escape":
           e.preventDefault();
-          setShowShortcuts(false);
-          setShowCommitModal(false);
-          setConfirmDiscard(null);
-          setActiveComment(null);
+          // Close modals first, then expanded files
+          if (showShortcuts || showCommitModal || confirmDiscard !== null || activeComment !== null) {
+            setShowShortcuts(false);
+            setShowCommitModal(false);
+            setConfirmDiscard(null);
+            setActiveComment(null);
+          } else if (expandedFiles.size > 0) {
+            setExpandedFiles(new Set());
+          }
           break;
       }
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode]);
+  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode, refresh, refreshPRs, showShortcuts, showCommitModal, confirmDiscard, activeComment]);
 
   const commentThreadsByFile = useMemo(() => {
     const byFile = new Map<string, ReturnType<typeof buildCommentThreads>>();
@@ -408,15 +402,24 @@ export default function App() {
       {
         id: "refresh",
         label: "Refresh",
+        shortcut: "r",
         category: "actions" as const,
         action: () => void refresh(),
       },
       {
-        id: "go-first",
-        label: "Go to first file",
-        shortcut: "gg",
+        id: "next-file",
+        label: "Next file",
+        shortcut: "J",
         category: "navigation" as const,
-        action: () => setFocusedIndex(0),
+        action: () => setFocusedIndex((i) => Math.min(i + 1, files.length - 1)),
+        disabled: files.length === 0,
+      },
+      {
+        id: "prev-file",
+        label: "Previous file",
+        shortcut: "K",
+        category: "navigation" as const,
+        action: () => setFocusedIndex((i) => Math.max(i - 1, 0)),
         disabled: files.length === 0,
       },
       {
@@ -428,28 +431,20 @@ export default function App() {
         disabled: files.length === 0,
       },
       {
-        id: "expand-file",
-        label: "Expand file",
-        shortcut: "l",
+        id: "toggle-file",
+        label: "Toggle file",
+        shortcut: "Enter",
         category: "navigation" as const,
         action: () => focusedFile && void toggleFile(focusedFile.path),
-        disabled: !focusedFile || expandedFiles.has(focusedFile.path),
+        disabled: !focusedFile,
       },
       {
-        id: "collapse-file",
-        label: "Collapse file",
-        shortcut: "h",
+        id: "collapse-all",
+        label: "Collapse all files",
+        shortcut: "Esc",
         category: "navigation" as const,
-        action: () => {
-          if (focusedFile && expandedFiles.has(focusedFile.path)) {
-            setExpandedFiles((prev) => {
-              const next = new Set(prev);
-              next.delete(focusedFile.path);
-              return next;
-            });
-          }
-        },
-        disabled: !focusedFile || !expandedFiles.has(focusedFile.path),
+        action: () => setExpandedFiles(new Set()),
+        disabled: expandedFiles.size === 0,
       },
       {
         id: "local-mode",
@@ -466,6 +461,14 @@ export default function App() {
         category: "settings" as const,
         action: () => setMode("branch"),
         disabled: mode === "branch",
+      },
+      {
+        id: "pr-mode",
+        label: "Switch to PRs mode",
+        shortcut: "3",
+        category: "settings" as const,
+        action: () => setMode("pr"),
+        disabled: mode === "pr",
       },
       {
         id: "toggle-diff-style",
