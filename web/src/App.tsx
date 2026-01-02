@@ -133,7 +133,13 @@ export default function App() {
       const file = files.find((f) => f.path === path);
       const isExpanding = !expandedFiles.has(path);
 
-      if (isExpanding && file && !file.patch) {
+      // Load full file diff if:
+      // - No patch yet, OR
+      // - PR mode and no file contents (need to fetch from GitHub)
+      const needsLoad = !file?.patch || 
+        (mode === "pr" && !file?.old_file?.contents && !file?.new_file?.contents);
+
+      if (isExpanding && file && needsLoad) {
         setLoadingFiles((prev) => new Set(prev).add(path));
         await loadFileDiff(path);
         setLoadingFiles((prev) => {
@@ -153,7 +159,7 @@ export default function App() {
         return next;
       });
     },
-    [expandedFiles, files, loadFileDiff],
+    [expandedFiles, files, loadFileDiff, mode],
   );
 
   // Keyboard shortcuts
