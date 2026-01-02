@@ -112,12 +112,41 @@ export async function handleGetFileDiff(url: URL): Promise<Response> {
     }
 
     try {
-      const rawDiff = await github.getPRDiff(repo.path, prNumber);
+      // Get PR details for branch names
+      const [pr, rawDiff] = await Promise.all([
+        github.getPR(repo.path, prNumber),
+        github.getPRDiff(repo.path, prNumber),
+      ]);
+      
       const files = parseUnifiedDiff(rawDiff, {});
       const fileDiff = files.find((f) => f.path === filePath);
 
       if (!fileDiff) {
         return Response.json({ error: "File not found in PR diff" }, { status: 404 });
+      }
+
+      // Fetch actual file contents from GitHub for proper diff rendering
+      const [oldContents, newContents] = await Promise.all([
+        fileDiff.status !== "added" 
+          ? github.getFileContents(repo.path, filePath, pr.baseRefName)
+          : Promise.resolve(null),
+        fileDiff.status !== "deleted"
+          ? github.getFileContents(repo.path, filePath, pr.headRefName)
+          : Promise.resolve(null),
+      ]);
+
+      // Add file contents for diff rendering
+      if (oldContents !== null || fileDiff.status === "added") {
+        fileDiff.old_file = { 
+          name: filePath, 
+          contents: oldContents ?? "" 
+        };
+      }
+      if (newContents !== null || fileDiff.status === "deleted") {
+        fileDiff.new_file = { 
+          name: filePath, 
+          contents: newContents ?? "" 
+        };
       }
 
       return Response.json(fileDiff);

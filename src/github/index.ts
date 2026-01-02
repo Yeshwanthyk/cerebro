@@ -180,3 +180,29 @@ export async function checkGhAuth(repoPath: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Get file contents from a specific ref (branch/commit)
+ */
+export async function getFileContents(
+  repoPath: string,
+  filePath: string,
+  ref: string
+): Promise<string | null> {
+  try {
+    // Use gh api to fetch file contents
+    // The endpoint returns base64 encoded content
+    const result = await ghJson<{ content?: string; encoding?: string }>(
+      ["api", `repos/{owner}/{repo}/contents/${filePath}?ref=${ref}`],
+      repoPath
+    );
+    
+    if (result.content && result.encoding === "base64") {
+      return Buffer.from(result.content, "base64").toString("utf-8");
+    }
+    return null;
+  } catch {
+    // File might not exist in this ref (new file or deleted)
+    return null;
+  }
+}
