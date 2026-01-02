@@ -99,6 +99,35 @@ export async function handleGetFileDiff(url: URL): Promise<Response> {
   }
 
   const mode = (url.searchParams.get("mode") || "branch") as DiffMode;
+
+  // Handle PR mode
+  if (mode === "pr") {
+    const prNumberStr = url.searchParams.get("pr");
+    if (!prNumberStr) {
+      return Response.json({ error: "PR number required for pr mode" }, { status: 400 });
+    }
+    const prNumber = parseInt(prNumberStr, 10);
+    if (Number.isNaN(prNumber)) {
+      return Response.json({ error: "Invalid PR number" }, { status: 400 });
+    }
+
+    try {
+      const rawDiff = await github.getPRDiff(repo.path, prNumber);
+      const files = parseUnifiedDiff(rawDiff, {});
+      const fileDiff = files.find((f) => f.path === filePath);
+
+      if (!fileDiff) {
+        return Response.json({ error: "File not found in PR diff" }, { status: 404 });
+      }
+
+      return Response.json(fileDiff);
+    } catch (error) {
+      const err = error as { message: string; code?: string };
+      return Response.json({ error: err.message }, { status: 500 });
+    }
+  }
+
+  // Regular branch/working mode
   const compareBranch = url.searchParams.get("compare") || repo.baseBranch;
   const git = getGitManager(repo.path);
   const fileDiff = await git.getFileDiff({ baseBranch: compareBranch, mode, filePath });
