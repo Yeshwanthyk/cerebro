@@ -52,7 +52,6 @@ function parseFileChunk(chunk: string, viewedState: ViewedState): FileDiff | nul
   }
 
   // Count additions and deletions from diff content
-  const patchLines: string[] = [];
   let inHunk = false;
 
   for (const line of lines) {
@@ -61,7 +60,6 @@ function parseFileChunk(chunk: string, viewedState: ViewedState): FileDiff | nul
     }
 
     if (inHunk) {
-      patchLines.push(line);
       if (line.startsWith("+") && !line.startsWith("+++")) {
         additions++;
       } else if (line.startsWith("-") && !line.startsWith("---")) {
@@ -70,7 +68,7 @@ function parseFileChunk(chunk: string, viewedState: ViewedState): FileDiff | nul
     }
   }
 
-  const patch = patchLines.join("\n");
+  const patch = chunk.trimEnd();
 
   return {
     path,
