@@ -13,6 +13,7 @@ import type {
   Repository,
   PullRequest,
   PRFilter,
+  Commit,
 } from "@cerebro/types";
 
 // Re-export all shared types from backend
@@ -27,6 +28,7 @@ export type {
   Repository,
   PullRequest,
   PRFilter,
+  Commit,
 };
 
 // Frontend-specific types
@@ -46,4 +48,12 @@ export interface PRsResponse {
   prs: PullRequest[];
   repo_path: string;
   filter: PRFilter;
+}
+
+/**
+ * Response from GET /api/commits
+ */
+export interface CommitsResponse {
+  commits: Commit[];
+  repo_path: string;
 }

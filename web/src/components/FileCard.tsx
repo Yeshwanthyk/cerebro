@@ -1,4 +1,4 @@
-import type { Comment, FileDiff, Note } from "../api/types";
+import type { Comment, DiffMode, FileDiff, Note } from "../api/types";
 import type { CommentThread } from "../types/commentThread";
 import { CommentThreadList } from "./CommentThread";
 import { DiffView } from "./DiffView";
@@ -12,7 +12,7 @@ interface FileCardProps {
   isExpanded: boolean;
   isLoading?: boolean;
   isFocused: boolean;
-  mode: "branch" | "working" | "pr";
+  mode: DiffMode;
   onToggle: () => void;
   onToggleViewed: () => void;
   onResolveComment: (id: string) => void;
