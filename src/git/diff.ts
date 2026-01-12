@@ -5,6 +5,13 @@ import type { SimpleGit } from "simple-git";
 import { basename, join } from "path";
 import type { FileDiff, FileContents } from "../types";
 
+export const UNIFIED_CONTEXT = 3;
+export const UNIFIED_ARG = `--unified=${UNIFIED_CONTEXT}`;
+
+export function withUnifiedContext(args: string[]): string[] {
+  return [UNIFIED_ARG, ...args];
+}
+
 /**
  * Count additions and deletions from a patch
  */
@@ -129,7 +136,7 @@ export async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<
       if (!filePath || !statusCode) continue;
 
       processedPaths.add(filePath);
-      const patchDiff = await git.diff(["--cached", "--", filePath]);
+      const patchDiff = await git.diff(withUnifiedContext(["--cached", "--", filePath]));
       const { additions, deletions } = countChanges(patchDiff);
 
       let fileStatus: FileDiff["status"] = "modified";
@@ -156,7 +163,7 @@ export async function getWorkingDiff(git: SimpleGit, repoPath: string): Promise<
     if (processedPaths.has(filePath)) continue;
     processedPaths.add(filePath);
 
-    const diff = await git.diff([filePath]);
+    const diff = await git.diff(withUnifiedContext(["--", filePath]));
     const { additions, deletions } = countChanges(diff);
 
     files.push({
@@ -300,7 +307,7 @@ export async function getSingleBranchFileDiff(
   }
 
   try {
-    const patchDiff = await git.diff([mergeBase, "HEAD", "--", filePath]);
+    const patchDiff = await git.diff(withUnifiedContext([mergeBase, "HEAD", "--", filePath]));
     const { additions, deletions } = countChanges(patchDiff);
 
     const nameStatus = await git.diff([mergeBase, "HEAD", "--name-status", "--", filePath]);
@@ -336,7 +343,7 @@ export async function getSingleWorkingFileDiff(
   const stagedDiff = await git.diff(["--cached", "--name-status", "--", filePath]);
   if (stagedDiff.trim()) {
     const [statusCode] = stagedDiff.trim().split("\t");
-    const patchDiff = await git.diff(["--cached", "--", filePath]);
+    const patchDiff = await git.diff(withUnifiedContext(["--cached", "--", filePath]));
     const { additions, deletions } = countChanges(patchDiff);
 
     let fileStatus: FileDiff["status"] = "modified";
@@ -361,7 +368,7 @@ export async function getSingleWorkingFileDiff(
 
   // Check if modified (unstaged)
   if (status.modified.includes(filePath)) {
-    const diff = await git.diff([filePath]);
+    const diff = await git.diff(withUnifiedContext(["--", filePath]));
     const { additions, deletions } = countChanges(diff);
     return {
       path: filePath,

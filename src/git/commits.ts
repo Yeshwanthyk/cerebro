@@ -3,7 +3,7 @@
  */
 import type { SimpleGit } from "simple-git";
 import type { Commit, FileDiff } from "../types";
-import { countChanges, getFileContents } from "./diff";
+import { countChanges, getFileContents, UNIFIED_ARG } from "./diff";
 
 /**
  * List recent commits
@@ -87,7 +87,8 @@ export async function getCommitDiff(
   // Get list of files changed with stats
   const nameStatus = await git.raw([
     "show",
-    sha,
+      UNIFIED_ARG,
+      sha,
     "--format=",
     "--name-status",
   ]);
@@ -153,6 +154,7 @@ export async function getCommitFileDiff(
     // Get patch for this file
     const patch = await git.raw([
       "show",
+      UNIFIED_ARG,
       sha,
       "--format=",
       "--",

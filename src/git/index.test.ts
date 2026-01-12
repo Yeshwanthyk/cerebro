@@ -193,6 +193,36 @@ describe("getFileDiff", () => {
     await Bun.$`git -C ${testRepoPath} checkout -- README.md`.quiet();
   });
 
+  it("forces unified context regardless of repo config", async () => {
+    const filePath = join(testRepoPath, "context.txt");
+    const lines = Array.from({ length: 20 }, (_, i) => `line-${String(i + 1).padStart(2, "0")}`);
+    writeFileSync(filePath, `${lines.join("\n")}\n`);
+    await Bun.$`git -C ${testRepoPath} add context.txt`.quiet();
+    await Bun.$`git -C ${testRepoPath} commit -m "Add context file"`.quiet();
+
+    await Bun.$`git -C ${testRepoPath} config diff.context 50`.quiet();
+
+    const updated = [...lines];
+    updated[9] = "line-10-changed";
+    writeFileSync(filePath, `${updated.join("\n")}\n`);
+
+    const fileDiff = await git.getFileDiff({
+      baseBranch: "main",
+      mode: "working",
+      filePath: "context.txt",
+    });
+
+    expect(fileDiff).not.toBeNull();
+    const patch = fileDiff?.patch ?? "";
+    expect(patch).toContain(" line-09");
+    expect(patch).toContain(" line-11");
+    expect(patch).not.toContain(" line-01");
+    expect(patch).not.toContain(" line-20");
+
+    await Bun.$`git -C ${testRepoPath} checkout -- context.txt`.quiet();
+    await Bun.$`git -C ${testRepoPath} config --unset diff.context`.quiet();
+  });
+
   it("returns null for unchanged file in working mode", async () => {
     const fileDiff = await git.getFileDiff({
       baseBranch: "main",
