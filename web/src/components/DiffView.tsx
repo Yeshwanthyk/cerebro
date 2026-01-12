@@ -1,5 +1,5 @@
 import type { DiffLineAnnotation } from "@pierre/diffs/react";
-import { MultiFileDiff } from "@pierre/diffs/react";
+import { MultiFileDiff, PatchDiff } from "@pierre/diffs/react";
 import type { ReactNode } from "react";
 import type { Comment, FileDiff, Note } from "../api/types";
 import type { CommentThread } from "../types/commentThread";
@@ -104,9 +104,16 @@ export function DiffView({
     // No file contents loaded yet - show patch if available, otherwise loading state
     if (file.patch) {
       return (
-        <div className="diff-fallback">
-          <pre>{file.patch}</pre>
-        </div>
+        <PatchDiff
+          patch={file.patch}
+          options={{
+            theme: "pierre-dark",
+            diffStyle,
+            diffIndicators: "bars",
+            overflow: "wrap",
+            expandUnchanged: true,
+          }}
+        />
       );
     }
     return (
@@ -137,6 +144,7 @@ export function DiffView({
         diffStyle,
         diffIndicators: "bars",
         overflow: "wrap",
+        expandUnchanged: true,
         unsafeCSS: customCSS,
         onLineClick: onLineClick
           ? (props) => {
