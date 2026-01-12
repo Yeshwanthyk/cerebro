@@ -12,6 +12,7 @@ if (root) {
       }}
       highlighterOptions={{
         theme: "pierre-dark",
+        langs: ["typescript", "tsx", "javascript", "jsx", "json", "css", "html", "markdown", "python", "go", "rust", "bash"],
       }}
     >
       <App />
