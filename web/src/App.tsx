@@ -43,7 +43,7 @@ export default function App() {
     toggleViewed,
     addComment,
     resolveComment,
-    dismissNote,
+
     stageFile,
     unstageFile,
     discardFile,
@@ -91,6 +91,7 @@ export default function App() {
 
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
+  const [fileViewModes, setFileViewModes] = useState<Record<string, "patch" | "full">>({});
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   // Clear expanded files when mode or compare branch changes
@@ -103,6 +104,7 @@ export default function App() {
       prevBranchRef.current = compareBranch;
       prevRepoRef.current = currentRepo;
       setExpandedFiles(new Set());
+      setFileViewModes({});
       setFocusedIndex(0);
     }
   }, [mode, compareBranch, currentRepo]);
@@ -240,6 +242,34 @@ export default function App() {
     [expandedFiles, files, loadFileDiff, mode],
   );
 
+  const toggleFileViewMode = useCallback(
+    async (path: string) => {
+      const currentMode = fileViewModes[path] ?? "patch";
+      const nextMode = currentMode === "patch" ? "full" : "patch";
+
+      if (nextMode === "full") {
+        const file = files.find((f) => f.path === path);
+        const canLoadFull = file?.status === "modified" || file?.status === "renamed";
+        const needsLoad =
+          canLoadFull && (!file?.old_file?.contents || !file?.new_file?.contents);
+
+        if (needsLoad) {
+          setLoadingFiles((prev) => new Set(prev).add(path));
+          await loadFileDiff(path);
+          setLoadingFiles((prev) => {
+            const next = new Set(prev);
+            next.delete(path);
+            return next;
+          });
+        }
+      }
+
+      setFileViewModes((prev) => ({ ...prev, [path]: nextMode }));
+    },
+    [fileViewModes, files, loadFileDiff],
+  );
+
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -369,7 +399,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode, refresh, refreshPRs, showShortcuts, showCommitModal, confirmDiscard, activeComment, selectedPRData?.url, openPRInBrowser]);
+  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode, refresh, refreshPRs, refreshCommits, showShortcuts, showCommitModal, confirmDiscard, activeComment, selectedPRData?.url, openPRInBrowser]);
 
   const commentThreadsByFile = useMemo(() => {
     const byFile = new Map<string, ReturnType<typeof buildCommentThreads>>();
@@ -777,6 +807,7 @@ export default function App() {
               commentThreads={getCommentThreadsForFile(file.path)}
               notes={getNotesForFile(file.path)}
               diffStyle={diffStyle}
+              viewMode={fileViewModes[file.path] ?? "patch"}
               isExpanded={expandedFiles.has(file.path)}
               isLoading={loadingFiles.has(file.path)}
               isFocused={index === focusedIndex}
@@ -786,14 +817,11 @@ export default function App() {
                 setFocusedIndex(index);
               }}
               onToggleViewed={() => void toggleViewed(file.path, file.viewed)}
+              onToggleViewMode={() => void toggleFileViewMode(file.path)}
               onResolveComment={(id) => void resolveComment(id)}
-              onDismissNote={(id) => void dismissNote(id)}
               onStage={() => void stageFile(file.path)}
               onUnstage={() => void unstageFile(file.path)}
               onDiscard={() => setConfirmDiscard(file.path)}
-              onLineClick={(lineNumber, content) => {
-                setActiveComment({ filePath: file.path, lineNumber, content });
-              }}
             />
           ))
         )}

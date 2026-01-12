@@ -173,10 +173,11 @@ export function useDiff(repoId?: string | null): UseDiffResult {
             ...diffData,
             files: diffData.files.map((newFile) => {
               const existingFile = prevDiff?.files.find((f) => f.path === newFile.path);
-              // Preserve old_file and new_file if they were already loaded
-              if (existingFile?.old_file || existingFile?.new_file) {
+              // Preserve loaded file data (patch, old_file, new_file)
+              if (existingFile?.patch || existingFile?.old_file || existingFile?.new_file) {
                 return {
                   ...newFile,
+                  patch: existingFile.patch || newFile.patch,
                   old_file: existingFile.old_file,
                   new_file: existingFile.new_file,
                 };

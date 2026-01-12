@@ -9,18 +9,18 @@ interface FileCardProps {
   commentThreads: CommentThread[];
   notes: Note[];
   diffStyle: "split" | "unified";
+  viewMode: "patch" | "full";
   isExpanded: boolean;
   isLoading?: boolean;
   isFocused: boolean;
   mode: DiffMode;
   onToggle: () => void;
   onToggleViewed: () => void;
+  onToggleViewMode: () => void;
   onResolveComment: (id: string) => void;
-  onDismissNote: (id: string) => void;
   onStage?: () => void;
   onUnstage?: () => void;
   onDiscard?: () => void;
-  onLineClick?: (lineNumber: number, content: string) => void;
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string }> = {
@@ -50,18 +50,18 @@ export function FileCard({
   commentThreads,
   notes,
   diffStyle,
+  viewMode,
   isExpanded,
   isLoading,
   isFocused,
   mode,
   onToggle,
   onToggleViewed,
+  onToggleViewMode,
   onResolveComment,
-  onDismissNote,
   onStage,
   onUnstage,
   onDiscard,
-  onLineClick,
 }: FileCardProps) {
   const status = STATUS_STYLES[file.status] ?? DEFAULT_STATUS;
   const unresolvedComments = comments.filter((c) => !c.resolved).length;
@@ -110,6 +110,16 @@ export function FileCard({
               Discard
             </button>
           )}
+          <button
+            type="button"
+            className={`action-btn view-toggle ${viewMode === "full" ? "active" : ""}`}
+            onClick={onToggleViewMode}
+            aria-pressed={viewMode === "full"}
+            title={viewMode === "full" ? "Show patch diff" : "Show full file diff"}
+          >
+            {viewMode === "full" ? "Full" : "Patch"}
+          </button>
+
           <label className="reviewed-checkbox">
             <input type="checkbox" checked={file.viewed} onChange={onToggleViewed} />
             <span>Reviewed</span>
@@ -132,16 +142,7 @@ export function FileCard({
             {isLoading ? (
               <div className="diff-loading">Loading diff...</div>
             ) : (
-              <DiffView
-                file={file}
-                comments={comments}
-                commentThreads={commentThreads}
-                notes={notes}
-                diffStyle={diffStyle}
-                onResolveComment={onResolveComment}
-                onDismissNote={onDismissNote}
-                onLineClick={onLineClick}
-              />
+              <DiffView file={file} diffStyle={diffStyle} viewMode={viewMode} />
             )}
           </div>
         </>
