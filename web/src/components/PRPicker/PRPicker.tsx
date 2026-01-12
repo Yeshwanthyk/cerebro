@@ -11,6 +11,7 @@ interface PRPickerProps {
   onSelectPR: (pr: number) => void;
   onClearSelection: () => void;
   onRefresh: () => void;
+  onOpenInBrowser?: () => void;
 }
 
 const FILTER_LABELS: Record<PRFilter, string> = {
@@ -29,6 +30,7 @@ export function PRPicker({
   onSelectPR,
   onClearSelection,
   onRefresh,
+  onOpenInBrowser,
 }: PRPickerProps) {
   const selectedPRData = prs.find((pr) => pr.number === selectedPR);
 
@@ -47,6 +49,16 @@ export function PRPicker({
           <span className="pr-number">#{selectedPRData.number}</span>
           <span className="pr-title">{selectedPRData.title}</span>
         </div>
+        {onOpenInBrowser && (
+          <button
+            type="button"
+            className="pr-open-btn"
+            onClick={onOpenInBrowser}
+            title="Open in GitHub (O)"
+          >
+            Open in GitHub
+          </button>
+        )}
       </div>
     );
   }

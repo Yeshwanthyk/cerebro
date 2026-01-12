@@ -62,6 +62,15 @@ export default function App() {
     refresh: refreshPRs,
   } = usePRs(currentRepo);
 
+  // Get full PR data for selected PR
+  const selectedPRData = prs.find((pr) => pr.number === selectedPR);
+
+  const openPRInBrowser = useCallback(() => {
+    if (selectedPRData?.url) {
+      window.open(selectedPRData.url, "_blank");
+    }
+  }, [selectedPRData]);
+
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -296,6 +305,12 @@ export default function App() {
           e.preventDefault();
           if (mode === "working" && files.some((f) => f.staged)) setShowCommitModal(true);
           break;
+        case "O":
+          e.preventDefault();
+          if (mode === "pr" && selectedPRData?.url) {
+            openPRInBrowser();
+          }
+          break;
         case "Escape":
           e.preventDefault();
           // Close modals first, then expanded files
@@ -313,7 +328,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode, refresh, refreshPRs, showShortcuts, showCommitModal, confirmDiscard, activeComment]);
+  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode, refresh, refreshPRs, showShortcuts, showCommitModal, confirmDiscard, activeComment, selectedPRData?.url, openPRInBrowser]);
 
   const commentThreadsByFile = useMemo(() => {
     const byFile = new Map<string, ReturnType<typeof buildCommentThreads>>();
@@ -471,6 +486,14 @@ export default function App() {
         disabled: mode === "pr",
       },
       {
+        id: "open-pr-github",
+        label: "Open PR in GitHub",
+        shortcut: "O",
+        category: "actions" as const,
+        action: openPRInBrowser,
+        disabled: !selectedPRData?.url,
+      },
+      {
         id: "toggle-diff-style",
         label: diffStyle === "split" ? "Switch to Unified view" : "Switch to Split view",
         shortcut: "t",
@@ -485,7 +508,7 @@ export default function App() {
         action: () => setShowShortcuts(true),
       },
     ];
-  }, [repos, currentRepo, setCurrentRepo, files, focusedIndex, mode, diffStyle, expandedFiles, toggleFile, toggleViewed, stageFile, unstageFile, refresh, setMode]);
+  }, [repos, currentRepo, setCurrentRepo, files, focusedIndex, mode, diffStyle, expandedFiles, toggleFile, toggleViewed, stageFile, unstageFile, refresh, setMode, selectedPRData?.url, openPRInBrowser]);
 
   // Event handlers
   const handleRepoSelect = async (id: string) => {
@@ -629,6 +652,7 @@ export default function App() {
             setPrNumber(null);
           }}
           onRefresh={() => void refreshPRs()}
+          onOpenInBrowser={selectedPRData?.url ? openPRInBrowser : undefined}
         />
       )}
 

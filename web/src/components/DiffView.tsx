@@ -1,5 +1,5 @@
-import type { DiffLineAnnotation } from "@pierre/precision-diffs/react";
-import { MultiFileDiff } from "@pierre/precision-diffs/react";
+import type { DiffLineAnnotation } from "@pierre/diffs/react";
+import { MultiFileDiff } from "@pierre/diffs/react";
 import type { ReactNode } from "react";
 import type { Comment, FileDiff, Note } from "../api/types";
 import type { CommentThread } from "../types/commentThread";

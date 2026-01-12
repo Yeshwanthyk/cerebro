@@ -57,6 +57,9 @@ export function ShortcutsModal({ onClose }: ShortcutsModalProps) {
           <kbd>3</kbd> PRs
         </li>
         <li>
+          <kbd>O</kbd> Open PR in GitHub <small>(PR mode)</small>
+        </li>
+        <li>
           <kbd>t</kbd> Toggle split/unified
         </li>
         <li>
