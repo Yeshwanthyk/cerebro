@@ -84,6 +84,14 @@ if (await Bun.file(path.join(imagesDir, ".gitkeep")).exists().catch(() => false)
   await Bun.$`cp -r ${imagesDir} ${outdir}/images`.quiet().catch(() => {});
 }
 
+// Copy diffs worker for offloading syntax highlighting
+const workerSrc = path.join(import.meta.dir, "node_modules/@pierre/diffs/dist/worker/worker-portable.js");
+const workerDest = path.join(outdir, "diffs-worker.js");
+if (await Bun.file(workerSrc).exists()) {
+  console.log("📁 Copying diffs worker...");
+  await Bun.$`cp ${workerSrc} ${workerDest}`.quiet();
+}
+
 // Workaround: Bun bundler sometimes points HTML to wrong chunk.
 // Find the main bundle (contains createRoot) and fix the script src.
 const htmlPath = path.join(outdir, "index.html");
