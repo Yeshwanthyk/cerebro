@@ -31,3 +31,6 @@ export { handleGetNotes, handleDismissNote } from "./notes";
 
 // Pull Requests
 export { handleGetPRs, handlePRReview } from "./pr";
+
+// Commits
+export { handleGetCommits, handleGetCommitDiff, handleGetCommitFileDiff } from "./commits";

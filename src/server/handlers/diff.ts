@@ -7,6 +7,7 @@ import * as github from "../../github";
 import type { DiffMode } from "../../types";
 import { getCurrentRepoFromRequest, noRepoError } from "./utils";
 import { parseUnifiedDiff } from "./pr-diff.ts";
+import { handleGetCommitDiff, handleGetCommitFileDiff } from "./commits";
 
 export async function handleGetDiff(url: URL): Promise<Response> {
   const repo = await getCurrentRepoFromRequest(url);
@@ -66,6 +67,15 @@ export async function handleGetDiff(url: URL): Promise<Response> {
       }
       return Response.json({ error: err.message }, { status: 500 });
     }
+  }
+
+  // Handle commit mode
+  if (mode === "commit") {
+    const sha = url.searchParams.get("commit");
+    if (!sha) {
+      return Response.json({ error: "Commit SHA required for commit mode" }, { status: 400 });
+    }
+    return handleGetCommitDiff(url, sha);
   }
 
   // Regular branch/working mode
@@ -154,6 +164,15 @@ export async function handleGetFileDiff(url: URL): Promise<Response> {
       const err = error as { message: string; code?: string };
       return Response.json({ error: err.message }, { status: 500 });
     }
+  }
+
+  // Handle commit mode
+  if (mode === "commit") {
+    const sha = url.searchParams.get("commit");
+    if (!sha) {
+      return Response.json({ error: "Commit SHA required for commit mode" }, { status: 400 });
+    }
+    return handleGetCommitFileDiff(url, sha, filePath);
   }
 
   // Regular branch/working mode
