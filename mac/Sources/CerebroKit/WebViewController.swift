@@ -44,6 +44,9 @@ public final class WebViewController: NSViewController, WKNavigationDelegate, WK
             openTerminal: function(path) {
                 this.postMessage({type: 'openTerminal', path: path});
             },
+            openURL: function(url) {
+                this.postMessage({type: 'openURL', url: url});
+            },
             showNotification: function(title, body) {
                 this.postMessage({type: 'notification', title: title, body: body});
             }
@@ -221,6 +224,10 @@ public final class WebViewController: NSViewController, WKNavigationDelegate, WK
             if let path = body["path"] as? String {
                 openTerminal(path: path)
             }
+        case "openURL":
+            if let urlString = body["url"] as? String {
+                openURL(urlString: urlString)
+            }
         case "notification":
             if let title = body["title"] as? String,
                let notificationBody = body["body"] as? String {
@@ -232,6 +239,14 @@ public final class WebViewController: NSViewController, WKNavigationDelegate, WK
     }
 
     // MARK: - Native Integrations
+
+    private func openURL(urlString: String) {
+        guard let url = URL(string: urlString) else {
+            logger.error("Invalid URL: \(urlString)")
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
 
     private func openInFinder(path: String) {
         let expandedPath = NSString(string: path).expandingTildeInPath

@@ -67,7 +67,13 @@ export default function App() {
 
   const openPRInBrowser = useCallback(() => {
     if (selectedPRData?.url) {
-      window.open(selectedPRData.url, "_blank");
+      // Use native bridge in macOS app, fallback to window.open in browser
+      const bridge = (window as unknown as { cerebroBridge?: { openURL: (url: string) => void } }).cerebroBridge;
+      if (bridge?.openURL) {
+        bridge.openURL(selectedPRData.url);
+      } else {
+        window.open(selectedPRData.url, "_blank");
+      }
     }
   }, [selectedPRData]);
 
