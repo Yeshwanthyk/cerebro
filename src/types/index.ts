@@ -18,7 +18,7 @@ export interface FileDiff {
 }
 
 // Diff response from API
-export type DiffMode = "branch" | "working" | "pr";
+export type DiffMode = "branch" | "working" | "pr" | "commit";
 
 export interface DiffResponse {
   files: FileDiff[];
@@ -33,6 +33,11 @@ export interface DiffResponse {
   pr_title?: string;
   pr_author?: string;
   pr_url?: string;
+  // Commit-specific fields
+  commit_sha?: string;
+  commit_message?: string;
+  commit_author?: string;
+  commit_date?: string;
 }
 
 // Repository status
@@ -119,3 +124,16 @@ export interface PullRequest {
 }
 
 export type PRFilter = "all" | "mine" | "review-requested";
+
+// Commit types
+export interface Commit {
+  sha: string;
+  shortSha: string;
+  message: string;
+  author: string;
+  email: string;
+  date: string;
+  additions: number;
+  deletions: number;
+  filesChanged: number;
+}

@@ -8,6 +8,7 @@ import { createGitManager } from "./manager";
 // Re-export types and utilities
 export type { GitManager } from "./types";
 export { isGitRepo, getRepoName } from "./utils";
+export * from "./commits";
 
 // Cache of git managers by repo path
 const managers = new Map<string, GitManager>();
