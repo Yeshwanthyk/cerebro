@@ -54,7 +54,10 @@ export function ShortcutsModal({ onClose }: ShortcutsModalProps) {
           <kbd>2</kbd> Branch
         </li>
         <li>
-          <kbd>3</kbd> PRs
+          <kbd>3</kbd> Commits
+        </li>
+        <li>
+          <kbd>4</kbd> PRs
         </li>
         <li>
           <kbd>O</kbd> Open PR in GitHub <small>(PR mode)</small>

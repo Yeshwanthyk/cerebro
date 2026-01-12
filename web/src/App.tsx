@@ -12,9 +12,11 @@ import {
 } from "./components/Modals";
 import { useDiff } from "./hooks/useDiff";
 import { usePRs } from "./hooks/usePRs";
+import { useCommits } from "./hooks/useCommits";
 import { useRepos } from "./hooks/useRepos";
 import { buildCommentThreads } from "./utils/commentThreads";
 import { PRPicker } from "./components/PRPicker";
+import { CommitPicker } from "./components/CommitPicker";
 
 export default function App() {
   const {
@@ -49,6 +51,7 @@ export default function App() {
     loadFileDiff,
     refresh,
     setPrNumber,
+    setCommitSha,
   } = useDiff(currentRepo);
 
   const {
@@ -61,6 +64,15 @@ export default function App() {
     setSelectedPR,
     refresh: refreshPRs,
   } = usePRs(currentRepo);
+
+  const {
+    commits,
+    loading: commitsLoading,
+    error: commitsError,
+    selectedCommit,
+    setSelectedCommit,
+    refresh: refreshCommits,
+  } = useCommits(currentRepo);
 
   // Get full PR data for selected PR
   const selectedPRData = prs.find((pr) => pr.number === selectedPR);
@@ -109,13 +121,28 @@ export default function App() {
     }
   }, [mode, setSelectedPR]);
 
+  // Sync commit selection with diff hook
+  useEffect(() => {
+    if (mode === "commit" && selectedCommit !== null) {
+      setCommitSha(selectedCommit);
+    }
+  }, [mode, selectedCommit, setCommitSha]);
+
+  // Clear commit selection when leaving commit mode
+  useEffect(() => {
+    if (mode !== "commit") {
+      setSelectedCommit(null);
+    }
+  }, [mode, setSelectedCommit]);
+
   const [diffStyle, setDiffStyle] = useState<"split" | "unified">("unified");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [modeCounts, setModeCounts] = useState<{ branch: number | null; working: number | null; pr: number | null }>({
+  const [modeCounts, setModeCounts] = useState<{ branch: number | null; working: number | null; pr: number | null; commit: number | null }>({
     branch: null,
     working: null,
     pr: null,
+    commit: null,
   });
 
   // Fetch counts for all modes
@@ -140,13 +167,16 @@ export default function App() {
 
         // PR count comes from prs array
         setModeCounts((prev) => ({ ...prev, pr: prs.length > 0 ? prs.length : null }));
+
+        // Commit count comes from commits array
+        setModeCounts((prev) => ({ ...prev, commit: commits.length > 0 ? commits.length : null }));
       } catch {
         // ignore errors
       }
     };
 
     void fetchCounts();
-  }, [currentRepo, prs.length]);
+  }, [currentRepo, prs.length, commits.length]);
 
   // Auto-dismiss notifications
   useEffect(() => {
@@ -292,12 +322,17 @@ export default function App() {
           break;
         case "3":
           e.preventDefault();
+          setMode("commit");
+          break;
+        case "4":
+          e.preventDefault();
           setMode("pr");
           break;
         case "r":
           e.preventDefault();
           void refresh();
           if (mode === "pr") void refreshPRs();
+          if (mode === "commit") void refreshCommits();
           break;
         case "?":
           e.preventDefault();
@@ -484,9 +519,17 @@ export default function App() {
         disabled: mode === "branch",
       },
       {
+        id: "commit-mode",
+        label: "Switch to Commits mode",
+        shortcut: "3",
+        category: "settings" as const,
+        action: () => setMode("commit"),
+        disabled: mode === "commit",
+      },
+      {
         id: "pr-mode",
         label: "Switch to PRs mode",
-        shortcut: "3",
+        shortcut: "4",
         category: "settings" as const,
         action: () => setMode("pr"),
         disabled: mode === "pr",
@@ -662,6 +705,23 @@ export default function App() {
         />
       )}
 
+      {mode === "commit" && (
+        <CommitPicker
+          commits={commits}
+          loading={commitsLoading}
+          error={commitsError}
+          selectedCommit={selectedCommit}
+          onSelectCommit={(sha) => {
+            setSelectedCommit(sha);
+          }}
+          onClearSelection={() => {
+            setSelectedCommit(null);
+            setCommitSha(null);
+          }}
+          onRefresh={() => void refreshCommits()}
+        />
+      )}
+
       <main className="file-list">
         {files.length === 0 ? (
           <div className="empty">
@@ -693,6 +753,18 @@ export default function App() {
               <>
                 <p>No files in this PR</p>
                 <p className="muted">This PR has no changed files</p>
+              </>
+            )}
+            {mode === "commit" && selectedCommit === null && (
+              <>
+                <p>Select a commit to view</p>
+                <p className="muted">Choose from the list above</p>
+              </>
+            )}
+            {mode === "commit" && selectedCommit !== null && (
+              <>
+                <p>No files in this commit</p>
+                <p className="muted">This commit has no changed files</p>
               </>
             )}
           </div>
