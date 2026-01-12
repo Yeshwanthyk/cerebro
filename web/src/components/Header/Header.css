@@ -232,3 +232,26 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Commit Info */
+.commit-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.commit-badge {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.commit-title-header {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

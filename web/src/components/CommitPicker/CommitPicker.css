@@ -1,0 +1,202 @@
+.commit-picker {
+  margin-bottom: 16px;
+}
+
+.commit-picker-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.commit-back-btn,
+.commit-open-btn,
+.commit-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.commit-back-btn:hover,
+.commit-open-btn:hover,
+.commit-refresh-btn:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-text-secondary);
+  color: var(--color-text);
+}
+
+.commit-open-btn {
+  flex-shrink: 0;
+}
+
+.commit-open-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.commit-selected-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.commit-selected-info .commit-sha {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.commit-selected-info .commit-message {
+  font-size: 14px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.commit-selected-info .commit-author {
+  font-size: 12px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.commit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.commit-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.commit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.commit-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.commit-item:hover {
+  border-color: var(--color-accent);
+  background: var(--color-bg-tertiary);
+}
+
+.commit-item.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.commit-sha {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.commit-message {
+  font-size: 13px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.commit-stats {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.commit-additions {
+  color: var(--color-added);
+}
+
+.commit-deletions {
+  color: var(--color-deleted);
+}
+
+.commit-files {
+  color: var(--color-muted);
+}
+
+.commit-loading,
+.commit-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.commit-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: color-mix(in srgb, var(--color-deleted) 10%, transparent);
+  border: 1px solid var(--color-deleted);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.commit-error span {
+  color: var(--color-deleted);
+  font-size: 13px;
+}
+
+.commit-error button {
+  padding: 4px 8px;
+  border: 1px solid var(--color-deleted);
+  background: transparent;
+  color: var(--color-deleted);
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}

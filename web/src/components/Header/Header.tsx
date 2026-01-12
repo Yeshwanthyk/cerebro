@@ -2,15 +2,14 @@ import { useState, useEffect } from "react";
 import { Icon } from "../Icon";
 import { PRActions } from "../PRActions";
 import { RepoPicker } from "../RepoPicker";
-import type { Repository, DiffResponse } from "../../api/types";
+import type { DiffMode, Repository, DiffResponse } from "../../api/types";
 import "./Header.css";
-
-type DiffMode = "branch" | "working" | "pr";
 
 interface ModeCounts {
   branch: number | null;
   working: number | null;
   pr: number | null;
+  commit: number | null;
 }
 
 interface HeaderProps {
@@ -101,6 +100,13 @@ export function Header({
           </button>
           <button
             type="button"
+            className={mode === "commit" ? "active" : ""}
+            onClick={() => onModeChange("commit")}
+          >
+            Commits{renderCount(modeCounts.commit)}
+          </button>
+          <button
+            type="button"
             className={mode === "pr" ? "active" : ""}
             onClick={() => onModeChange("pr")}
           >
@@ -157,6 +163,12 @@ export function Header({
           <span className="pr-info">
             <span className="pr-badge">#{diff.pr_number}</span>
             <span className="pr-title-header">{diff.pr_title}</span>
+          </span>
+        )}
+        {mode === "commit" && diff?.commit_sha && (
+          <span className="commit-info">
+            <span className="commit-badge">{diff.commit_sha.slice(0, 7)}</span>
+            <span className="commit-title-header">{diff.commit_message}</span>
           </span>
         )}
       </div>
