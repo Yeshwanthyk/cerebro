@@ -1850,3 +1850,120 @@ body {
   padding: 0;
   line-height: 1;
 }
+
+/* ===== New Layout Styles ===== */
+
+/* Main two-column layout */
+.main-layout {
+  display: flex;
+  height: calc(100vh - 140px);
+  gap: 0;
+  margin: 0 -40px -32px;
+  background: var(--color-bg);
+}
+
+/* App container adjustments for new layout */
+.app {
+  max-width: none;
+  padding: 32px 40px 0;
+}
+
+/* Hide old file-list in new layout */
+.file-list {
+  display: none;
+}
+
+/* Notification styling */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
+  animation: slide-in 0.2s ease;
+}
+
+.notification.success {
+  border-color: var(--color-added);
+}
+
+.notification.error {
+  border-color: var(--color-deleted);
+}
+
+.notification button {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  line-height: 1;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* New file fallback view */
+.new-file-view {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg-secondary);
+  overflow: auto;
+}
+
+.new-file-content {
+  margin: 0;
+  padding: 0;
+}
+
+.new-file-line {
+  display: flex;
+  background: rgba(46, 160, 67, 0.15);
+}
+
+.new-file-line .line-number {
+  width: 50px;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.2);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.new-file-line .line-add {
+  width: 20px;
+  text-align: center;
+  color: var(--green);
+  flex-shrink: 0;
+}
+
+.new-file-line .line-content {
+  flex: 1;
+  padding-right: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.diff-error {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+}

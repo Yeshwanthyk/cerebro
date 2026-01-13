@@ -18,7 +18,7 @@
     "check": "bun run lint:all && tsc --noEmit"
   },
   "dependencies": {
-    "@pierre/diffs": "1.0.3",
+    "@pierre/diffs": "1.0.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

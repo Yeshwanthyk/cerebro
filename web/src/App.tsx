@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Command, CommandPalette } from "./components/CommandPalette";
-import { FileCard } from "./components/FileCard";
 import { RepoPicker } from "./components/RepoPicker";
 import { Header } from "./components/Header";
-import { Progress } from "./components/Progress";
+import { Sidebar } from "./components/Sidebar";
+import { DiffPanel } from "./components/DiffPanel";
 import {
   ShortcutsModal,
   ConfirmDiscardModal,
@@ -43,7 +43,6 @@ export default function App() {
     toggleViewed,
     addComment,
     resolveComment,
-
     stageFile,
     unstageFile,
     discardFile,
@@ -52,6 +51,7 @@ export default function App() {
     refresh,
     setPrNumber,
     setCommitSha,
+    stageAllFiles,
   } = useDiff(currentRepo);
 
   const {
@@ -79,7 +79,6 @@ export default function App() {
 
   const openPRInBrowser = useCallback(() => {
     if (selectedPRData?.url) {
-      // Use native bridge in macOS app, fallback to window.open in browser
       const bridge = (window as unknown as { cerebroBridge?: { openURL: (url: string) => void } }).cerebroBridge;
       if (bridge?.openURL) {
         bridge.openURL(selectedPRData.url);
@@ -89,12 +88,12 @@ export default function App() {
     }
   }, [selectedPRData]);
 
-  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [fileViewModes, setFileViewModes] = useState<Record<string, "patch" | "full">>({});
   const [focusedIndex, setFocusedIndex] = useState(0);
 
-  // Clear expanded files when mode or compare branch changes
+  // Clear state when mode or compare branch changes
   const prevModeRef = useRef(mode);
   const prevBranchRef = useRef(compareBranch);
   const prevRepoRef = useRef(currentRepo);
@@ -103,7 +102,7 @@ export default function App() {
       prevModeRef.current = mode;
       prevBranchRef.current = compareBranch;
       prevRepoRef.current = currentRepo;
-      setExpandedFiles(new Set());
+      setSelectedPath(null);
       setFileViewModes({});
       setFocusedIndex(0);
     }
@@ -153,24 +152,19 @@ export default function App() {
 
     const fetchCounts = async () => {
       try {
-        // Fetch working count
         const workingRes = await fetch(`/api/diff?repo=${currentRepo}&mode=working`);
         if (workingRes.ok) {
           const data = await workingRes.json() as { files?: unknown[] };
           setModeCounts((prev) => ({ ...prev, working: data.files?.length ?? 0 }));
         }
 
-        // Fetch branch count
         const branchRes = await fetch(`/api/diff?repo=${currentRepo}&mode=branch`);
         if (branchRes.ok) {
           const data = await branchRes.json() as { files?: unknown[] };
           setModeCounts((prev) => ({ ...prev, branch: data.files?.length ?? 0 }));
         }
 
-        // PR count comes from prs array
         setModeCounts((prev) => ({ ...prev, pr: prs.length > 0 ? prs.length : null }));
-
-        // Commit count comes from commits array
         setModeCounts((prev) => ({ ...prev, commit: commits.length > 0 ? commits.length : null }));
       } catch {
         // ignore errors
@@ -187,6 +181,7 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
   const [showCommitModal, setShowCommitModal] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState<string | null>(null);
   const [activeComment, setActiveComment] = useState<{
@@ -208,18 +203,22 @@ export default function App() {
     });
   }, [diff?.files]);
 
-  const toggleFile = useCallback(
-    async (path: string) => {
-      const file = files.find((f) => f.path === path);
-      const isExpanding = !expandedFiles.has(path);
+  const selectedFile = useMemo(() => {
+    if (!selectedPath) return null;
+    return files.find((f) => f.path === selectedPath) ?? null;
+  }, [files, selectedPath]);
 
-      // Load full file diff if:
-      // - No patch yet, OR
-      // - PR mode and no file contents (need to fetch from GitHub)
+  // Load file diff when selecting a file
+  const selectFile = useCallback(
+    async (path: string, index: number) => {
+      setSelectedPath(path);
+      setFocusedIndex(index);
+
+      const file = files.find((f) => f.path === path);
       const needsLoad = !file?.patch || 
         (mode === "pr" && !file?.old_file?.contents && !file?.new_file?.contents);
 
-      if (isExpanding && file && needsLoad) {
+      if (file && needsLoad) {
         setLoadingFiles((prev) => new Set(prev).add(path));
         await loadFileDiff(path);
         setLoadingFiles((prev) => {
@@ -228,47 +227,36 @@ export default function App() {
           return next;
         });
       }
-
-      setExpandedFiles((prev) => {
-        const next = new Set(prev);
-        if (next.has(path)) {
-          next.delete(path);
-        } else {
-          next.add(path);
-        }
-        return next;
-      });
     },
-    [expandedFiles, files, loadFileDiff, mode],
+    [files, loadFileDiff, mode],
   );
 
   const toggleFileViewMode = useCallback(
-    async (path: string) => {
-      const currentMode = fileViewModes[path] ?? "patch";
+    async () => {
+      if (!selectedPath) return;
+      const currentMode = fileViewModes[selectedPath] ?? "patch";
       const nextMode = currentMode === "patch" ? "full" : "patch";
 
       if (nextMode === "full") {
-        const file = files.find((f) => f.path === path);
+        const file = files.find((f) => f.path === selectedPath);
         const canLoadFull = file?.status === "modified" || file?.status === "renamed";
-        const needsLoad =
-          canLoadFull && (!file?.old_file?.contents || !file?.new_file?.contents);
+        const needsLoad = canLoadFull && (!file?.old_file?.contents || !file?.new_file?.contents);
 
         if (needsLoad) {
-          setLoadingFiles((prev) => new Set(prev).add(path));
-          await loadFileDiff(path);
+          setLoadingFiles((prev) => new Set(prev).add(selectedPath));
+          await loadFileDiff(selectedPath);
           setLoadingFiles((prev) => {
             const next = new Set(prev);
-            next.delete(path);
+            next.delete(selectedPath);
             return next;
           });
         }
       }
 
-      setFileViewModes((prev) => ({ ...prev, [path]: nextMode }));
+      setFileViewModes((prev) => ({ ...prev, [selectedPath]: nextMode }));
     },
-    [fileViewModes, files, loadFileDiff],
+    [fileViewModes, selectedPath, files, loadFileDiff],
   );
-
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -283,11 +271,6 @@ export default function App() {
         return;
       }
 
-      // Let j/k pass through for natural scrolling
-      if (e.key === "j" || e.key === "k") {
-        return;
-      }
-
       const now = Date.now();
       const lastKey = lastKeyRef.current;
       const timeSinceLastKey = now - lastKeyTimeRef.current;
@@ -295,6 +278,7 @@ export default function App() {
       if (lastKey === "g" && e.key === "g" && timeSinceLastKey < 500) {
         e.preventDefault();
         setFocusedIndex(0);
+        if (files[0]) void selectFile(files[0].path, 0);
         lastKeyRef.current = null;
         return;
       }
@@ -305,42 +289,56 @@ export default function App() {
       const focusedFile = files[focusedIndex];
 
       switch (e.key) {
-        case "J":
+        case "j":
           e.preventDefault();
-          setFocusedIndex((i) => Math.min(i + 1, files.length - 1));
+          if (files.length > 0) {
+            const newIndex = Math.min(focusedIndex + 1, files.length - 1);
+            setFocusedIndex(newIndex);
+            const newFile = files[newIndex];
+            if (newFile) void selectFile(newFile.path, newIndex);
+          }
           break;
-        case "K":
+        case "k":
           e.preventDefault();
-          setFocusedIndex((i) => Math.max(i - 1, 0));
+          if (files.length > 0) {
+            const newIndex = Math.max(focusedIndex - 1, 0);
+            setFocusedIndex(newIndex);
+            const newFile = files[newIndex];
+            if (newFile) void selectFile(newFile.path, newIndex);
+          }
           break;
-        case "o":
         case "Enter":
           e.preventDefault();
-          if (focusedFile) void toggleFile(focusedFile.path);
+          if (focusedFile) void selectFile(focusedFile.path, focusedIndex);
           break;
         case "G":
           e.preventDefault();
-          if (e.shiftKey && files.length > 0) setFocusedIndex(files.length - 1);
+          if (e.shiftKey && files.length > 0) {
+            const lastIndex = files.length - 1;
+            setFocusedIndex(lastIndex);
+            const lastFile = files[lastIndex];
+            if (lastFile) void selectFile(lastFile.path, lastIndex);
+          }
           break;
         case "u":
-          if (focusedFile && mode === "working" && focusedFile.staged) {
+          if (selectedFile && mode === "working" && selectedFile.staged) {
             e.preventDefault();
-            void unstageFile(focusedFile.path);
+            void unstageFile(selectedFile.path);
           }
           break;
         case "v":
           e.preventDefault();
-          if (focusedFile) void toggleViewed(focusedFile.path, focusedFile.viewed);
+          if (selectedFile) void toggleViewed(selectedFile.path, selectedFile.viewed);
           break;
         case "s":
           e.preventDefault();
-          if (focusedFile && mode === "working" && !focusedFile.staged) {
-            void stageFile(focusedFile.path);
+          if (selectedFile && mode === "working" && !selectedFile.staged) {
+            void stageFile(selectedFile.path);
           }
           break;
         case "x":
           e.preventDefault();
-          if (focusedFile && mode === "working") setConfirmDiscard(focusedFile.path);
+          if (selectedFile && mode === "working") setConfirmDiscard(selectedFile.path);
           break;
         case "1":
           e.preventDefault();
@@ -384,14 +382,13 @@ export default function App() {
           break;
         case "Escape":
           e.preventDefault();
-          // Close modals first, then expanded files
           if (showShortcuts || showCommitModal || confirmDiscard !== null || activeComment !== null) {
             setShowShortcuts(false);
             setShowCommitModal(false);
             setConfirmDiscard(null);
             setActiveComment(null);
-          } else if (expandedFiles.size > 0) {
-            setExpandedFiles(new Set());
+          } else if (selectedPath) {
+            setSelectedPath(null);
           }
           break;
       }
@@ -399,7 +396,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [files, focusedIndex, expandedFiles, mode, toggleFile, toggleViewed, stageFile, unstageFile, setMode, refresh, refreshPRs, refreshCommits, showShortcuts, showCommitModal, confirmDiscard, activeComment, selectedPRData?.url, openPRInBrowser]);
+  }, [files, focusedIndex, selectedPath, selectedFile, mode, selectFile, toggleViewed, stageFile, unstageFile, setMode, refresh, refreshPRs, refreshCommits, showShortcuts, showCommitModal, confirmDiscard, activeComment, selectedPRData?.url, openPRInBrowser]);
 
   const commentThreadsByFile = useMemo(() => {
     const byFile = new Map<string, ReturnType<typeof buildCommentThreads>>();
@@ -425,7 +422,6 @@ export default function App() {
 
   // Command palette commands
   const commands: Command[] = useMemo(() => {
-    const focusedFile = files[focusedIndex];
     const stagedCount = files.filter((f) => f.staged).length;
 
     return [
@@ -440,42 +436,39 @@ export default function App() {
         id: `file-${file.path}`,
         label: file.path,
         category: "files" as const,
-        action: () => {
-          setFocusedIndex(index);
-          void toggleFile(file.path);
-        },
+        action: () => void selectFile(file.path, index),
       })),
       {
         id: "toggle-viewed",
-        label: focusedFile?.viewed ? "Mark as unreviewed" : "Mark as reviewed",
+        label: selectedFile?.viewed ? "Mark as unreviewed" : "Mark as reviewed",
         shortcut: "v",
         category: "actions" as const,
-        action: () => focusedFile && void toggleViewed(focusedFile.path, focusedFile.viewed),
-        disabled: !focusedFile,
+        action: () => selectedFile && void toggleViewed(selectedFile.path, selectedFile.viewed),
+        disabled: !selectedFile,
       },
       {
         id: "stage-file",
         label: "Stage file",
         shortcut: "s",
         category: "actions" as const,
-        action: () => focusedFile && void stageFile(focusedFile.path),
-        disabled: !focusedFile || mode !== "working" || focusedFile.staged,
+        action: () => selectedFile && void stageFile(selectedFile.path),
+        disabled: !selectedFile || mode !== "working" || selectedFile.staged,
       },
       {
         id: "unstage-file",
         label: "Unstage file",
         shortcut: "u",
         category: "actions" as const,
-        action: () => focusedFile && void unstageFile(focusedFile.path),
-        disabled: !focusedFile || mode !== "working" || !focusedFile.staged,
+        action: () => selectedFile && void unstageFile(selectedFile.path),
+        disabled: !selectedFile || mode !== "working" || !selectedFile.staged,
       },
       {
         id: "discard-file",
         label: "Discard changes",
         shortcut: "x",
         category: "actions" as const,
-        action: () => focusedFile && setConfirmDiscard(focusedFile.path),
-        disabled: !focusedFile || mode !== "working",
+        action: () => selectedFile && setConfirmDiscard(selectedFile.path),
+        disabled: !selectedFile || mode !== "working",
       },
       {
         id: "commit",
@@ -495,17 +488,25 @@ export default function App() {
       {
         id: "next-file",
         label: "Next file",
-        shortcut: "J",
+        shortcut: "j",
         category: "navigation" as const,
-        action: () => setFocusedIndex((i) => Math.min(i + 1, files.length - 1)),
+        action: () => {
+          const newIndex = Math.min(focusedIndex + 1, files.length - 1);
+          const newFile = files[newIndex];
+          if (newFile) void selectFile(newFile.path, newIndex);
+        },
         disabled: files.length === 0,
       },
       {
         id: "prev-file",
         label: "Previous file",
-        shortcut: "K",
+        shortcut: "k",
         category: "navigation" as const,
-        action: () => setFocusedIndex((i) => Math.max(i - 1, 0)),
+        action: () => {
+          const newIndex = Math.max(focusedIndex - 1, 0);
+          const newFile = files[newIndex];
+          if (newFile) void selectFile(newFile.path, newIndex);
+        },
         disabled: files.length === 0,
       },
       {
@@ -513,24 +514,20 @@ export default function App() {
         label: "Go to last file",
         shortcut: "G",
         category: "navigation" as const,
-        action: () => setFocusedIndex(files.length - 1),
+        action: () => {
+          const lastIndex = files.length - 1;
+          const lastFile = files[lastIndex];
+          if (lastFile) void selectFile(lastFile.path, lastIndex);
+        },
         disabled: files.length === 0,
       },
       {
-        id: "toggle-file",
-        label: "Toggle file",
-        shortcut: "Enter",
-        category: "navigation" as const,
-        action: () => focusedFile && void toggleFile(focusedFile.path),
-        disabled: !focusedFile,
-      },
-      {
-        id: "collapse-all",
-        label: "Collapse all files",
+        id: "clear-selection",
+        label: "Clear selection",
         shortcut: "Esc",
         category: "navigation" as const,
-        action: () => setExpandedFiles(new Set()),
-        disabled: expandedFiles.size === 0,
+        action: () => setSelectedPath(null),
+        disabled: !selectedPath,
       },
       {
         id: "local-mode",
@@ -587,7 +584,7 @@ export default function App() {
         action: () => setShowShortcuts(true),
       },
     ];
-  }, [repos, currentRepo, setCurrentRepo, files, focusedIndex, mode, diffStyle, expandedFiles, toggleFile, toggleViewed, stageFile, unstageFile, refresh, setMode, selectedPRData?.url, openPRInBrowser]);
+  }, [repos, currentRepo, setCurrentRepo, files, focusedIndex, mode, diffStyle, selectedFile, selectedPath, selectFile, toggleViewed, stageFile, unstageFile, refresh, setMode, selectedPRData?.url, openPRInBrowser]);
 
   // Event handlers
   const handleRepoSelect = async (id: string) => {
@@ -614,6 +611,9 @@ export default function App() {
     try {
       await discardFile(path);
       setConfirmDiscard(null);
+      if (selectedPath === path) {
+        setSelectedPath(null);
+      }
     } catch {
       // ignore
     }
@@ -624,6 +624,19 @@ export default function App() {
     try {
       await commit(message);
       setShowCommitModal(false);
+      setSelectedPath(null);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSidebarCommit = async (message: string) => {
+    await handleCommit(message);
+  };
+
+  const handleStageAll = async () => {
+    try {
+      await stageAllFiles();
     } catch {
       // ignore
     }
@@ -679,7 +692,6 @@ export default function App() {
     );
   }
 
-  const viewedCount = files.filter((f) => f.viewed).length;
   const stagedFiles = files.filter((f) => f.staged);
 
   return (
@@ -712,8 +724,6 @@ export default function App() {
           <button type="button" onClick={() => setNotification(null)}>×</button>
         </div>
       )}
-
-      <Progress viewedCount={viewedCount} totalCount={files.length} />
 
       {mode === "pr" && (
         <PRPicker
@@ -752,79 +762,36 @@ export default function App() {
         />
       )}
 
-      <main className="file-list">
-        {files.length === 0 ? (
-          <div className="empty">
-            {mode === "working" && (
-              <>
-                <p>No uncommitted changes</p>
-                <p className="muted">Working directory is clean</p>
-              </>
-            )}
-            {mode === "branch" && diff?.branch === (compareBranch ?? "main") && (
-              <>
-                <p>You're on {diff?.branch ?? "main"}</p>
-                <p className="muted">Switch to a feature branch to see diff</p>
-              </>
-            )}
-            {mode === "branch" && diff?.branch !== (compareBranch ?? "main") && (
-              <>
-                <p>Branch is up to date</p>
-                <p className="muted">No commits ahead of {compareBranch ?? "main"}</p>
-              </>
-            )}
-            {mode === "pr" && selectedPR === null && (
-              <>
-                <p>Select a PR to review</p>
-                <p className="muted">Choose from the list above</p>
-              </>
-            )}
-            {mode === "pr" && selectedPR !== null && (
-              <>
-                <p>No files in this PR</p>
-                <p className="muted">This PR has no changed files</p>
-              </>
-            )}
-            {mode === "commit" && selectedCommit === null && (
-              <>
-                <p>Select a commit to view</p>
-                <p className="muted">Choose from the list above</p>
-              </>
-            )}
-            {mode === "commit" && selectedCommit !== null && (
-              <>
-                <p>No files in this commit</p>
-                <p className="muted">This commit has no changed files</p>
-              </>
-            )}
-          </div>
-        ) : (
-          files.map((file, index) => (
-            <FileCard
-              key={file.path}
-              file={file}
-              comments={getCommentsForFile(file.path)}
-              commentThreads={getCommentThreadsForFile(file.path)}
-              notes={getNotesForFile(file.path)}
-              diffStyle={diffStyle}
-              viewMode={fileViewModes[file.path] ?? "patch"}
-              isExpanded={expandedFiles.has(file.path)}
-              isLoading={loadingFiles.has(file.path)}
-              isFocused={index === focusedIndex}
-              mode={mode}
-              onToggle={() => {
-                void toggleFile(file.path);
-                setFocusedIndex(index);
-              }}
-              onToggleViewed={() => void toggleViewed(file.path, file.viewed)}
-              onToggleViewMode={() => void toggleFileViewMode(file.path)}
-              onResolveComment={(id) => void resolveComment(id)}
-              onStage={() => void stageFile(file.path)}
-              onUnstage={() => void unstageFile(file.path)}
-              onDiscard={() => setConfirmDiscard(file.path)}
-            />
-          ))
-        )}
+      <main className="main-layout">
+        <Sidebar
+          files={files}
+          selectedPath={selectedPath}
+          focusedIndex={focusedIndex}
+          mode={mode}
+          diff={diff}
+          compareBranch={compareBranch}
+          onSelectFile={(path, index) => void selectFile(path, index)}
+          onStageAll={() => void handleStageAll()}
+          onCommit={(msg) => void handleSidebarCommit(msg)}
+        />
+        <DiffPanel
+          file={selectedFile}
+          files={files}
+          mode={mode}
+          viewMode={selectedPath ? (fileViewModes[selectedPath] ?? "patch") : "patch"}
+          diffStyle={diffStyle}
+          isLoading={selectedPath ? loadingFiles.has(selectedPath) : false}
+          comments={selectedPath ? getCommentsForFile(selectedPath) : []}
+          commentThreads={selectedPath ? getCommentThreadsForFile(selectedPath) : []}
+          notes={selectedPath ? getNotesForFile(selectedPath) : []}
+          onToggleViewMode={() => void toggleFileViewMode()}
+          onToggleDiffStyle={() => setDiffStyle((s) => (s === "split" ? "unified" : "split"))}
+          onToggleViewed={() => selectedFile && void toggleViewed(selectedFile.path, selectedFile.viewed)}
+          onStage={selectedFile && mode === "working" && !selectedFile.staged ? () => void stageFile(selectedFile.path) : undefined}
+          onUnstage={selectedFile && mode === "working" && selectedFile.staged ? () => void unstageFile(selectedFile.path) : undefined}
+          onDiscard={selectedFile && mode === "working" ? () => setConfirmDiscard(selectedFile.path) : undefined}
+          onResolveComment={(id) => void resolveComment(id)}
+        />
       </main>
 
       {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
