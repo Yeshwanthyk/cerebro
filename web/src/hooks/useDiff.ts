@@ -15,6 +15,7 @@ interface UseDiffResult {
   comments: Comment[];
   notes: Note[];
   loading: boolean;
+  initialLoading: boolean;
   error: string | null;
   mode: DiffMode;
   setMode: (mode: DiffMode) => void;
@@ -43,7 +44,6 @@ interface UseDiffResult {
   commit: (message: string) => Promise<void>;
 }
 
-// Cache key includes mode and branch for branch mode, PR number for PR mode, or commit SHA for commit mode
 function getCacheKey(mode: DiffMode, compareBranch: string | null, prNumber: number | null, commitSha: string | null): string {
   if (mode === "pr") return `pr:${prNumber ?? "none"}`;
   if (mode === "commit") return `commit:${commitSha ?? "none"}`;
@@ -54,7 +54,8 @@ export function useDiff(repoId?: string | null): UseDiffResult {
   const [diff, setDiff] = useState<DiffResponse | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<DiffMode>("working");
   const [branches, setBranches] = useState<string[]>([]);
@@ -62,8 +63,8 @@ export function useDiff(repoId?: string | null): UseDiffResult {
   const [prNumber, setPrNumber] = useState<number | null>(null);
   const [commitSha, setCommitSha] = useState<string | null>(null);
 
-  // Cache per mode/branch combination
   const cacheRef = useRef<Map<string, CachedData>>(new Map());
+  const hasLoadedOnceRef = useRef(false);
 
   const buildUrl = useCallback(
     (path: string, params: Record<string, string> = {}) => {
@@ -79,7 +80,6 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     [repoId],
   );
 
-  // Fetch branches once when repo changes
   useEffect(() => {
     if (!repoId) {
       setBranches([]);
@@ -91,7 +91,6 @@ export function useDiff(repoId?: string | null): UseDiffResult {
       .catch(() => setBranches([]));
   }, [repoId, buildUrl]);
 
-  // Reset compareBranch and prNumber when repo changes
   const prevRepoIdRef = useRef(repoId);
   useEffect(() => {
     if (prevRepoIdRef.current !== repoId) {
@@ -99,6 +98,8 @@ export function useDiff(repoId?: string | null): UseDiffResult {
       setCompareBranch(null);
       setPrNumber(null);
       setCommitSha(null);
+      hasLoadedOnceRef.current = false;
+      setInitialLoading(true);
     }
   }, [repoId]);
 
@@ -106,27 +107,27 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     async (currentMode: DiffMode, currentCompareBranch: string | null, currentPrNumber: number | null, currentCommitSha: string | null, background = false) => {
       if (!repoId) {
         setLoading(false);
+        setInitialLoading(false);
         setDiff(null);
         return;
       }
 
-      // Skip fetch if PR mode but no PR selected
       if (currentMode === "pr" && !currentPrNumber) {
         setLoading(false);
+        setInitialLoading(false);
         setDiff(null);
         return;
       }
 
-      // Skip fetch if commit mode but no commit selected
       if (currentMode === "commit" && !currentCommitSha) {
         setLoading(false);
+        setInitialLoading(false);
         setDiff(null);
         return;
       }
 
       const cacheKey = getCacheKey(currentMode, currentCompareBranch, currentPrNumber, currentCommitSha);
 
-      // Show cached data immediately if available (unless background refresh)
       if (!background) {
         const cached = cacheRef.current.get(cacheKey);
         if (cached) {
@@ -134,7 +135,9 @@ export function useDiff(repoId?: string | null): UseDiffResult {
           setComments(cached.comments);
           setNotes(cached.notes);
           setLoading(false);
+          setInitialLoading(false);
         } else {
+          // Only show loading indicator, not full screen loader after first load
           setLoading(true);
         }
       }
@@ -164,18 +167,14 @@ export function useDiff(repoId?: string | null): UseDiffResult {
         }
 
         const diffData = (await diffRes.json()) as DiffResponse;
-
         const commentsData = commentsRes?.ok ? ((await commentsRes.json()) as Comment[]) : [];
         const notesData = notesRes?.ok ? ((await notesRes.json()) as Note[]) : [];
 
-        // Merge with existing file data to preserve lazy-loaded content
         setDiff((prevDiff) => {
           const mergedDiff = {
             ...diffData,
             files: diffData.files.map((newFile) => {
               const existingFile = prevDiff?.files.find((f) => f.path === newFile.path);
-              // Preserve lazy-loaded data only when new data is missing (branch mode)
-              // For working mode, server sends fresh patches - prefer those
               if (existingFile) {
                 return {
                   ...newFile,
@@ -188,7 +187,6 @@ export function useDiff(repoId?: string | null): UseDiffResult {
             }),
           };
 
-          // Update cache with merged data
           cacheRef.current.set(cacheKey, {
             diff: mergedDiff,
             comments: commentsData,
@@ -202,19 +200,19 @@ export function useDiff(repoId?: string | null): UseDiffResult {
         setComments(commentsData);
         setNotes(notesData);
         setError(null);
+        hasLoadedOnceRef.current = true;
       } catch (err) {
-        // Only show error if no cached data
         if (!cacheRef.current.has(cacheKey)) {
           setError(err instanceof Error ? err.message : "Failed to load");
         }
       } finally {
         setLoading(false);
+        setInitialLoading(false);
       }
     },
     [repoId, buildUrl],
   );
 
-  // Clear cache when repo changes
   useEffect(() => {
     cacheRef.current.clear();
   }, []);
@@ -223,7 +221,6 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     void fetchData(mode, compareBranch, prNumber, commitSha);
   }, [mode, compareBranch, prNumber, commitSha, fetchData]);
 
-  // Background refresh every 3s to keep cache fresh
   useEffect(() => {
     if (!repoId) {
       return;
@@ -259,7 +256,6 @@ export function useDiff(repoId?: string | null): UseDiffResult {
         }
         const fileDiff = (await res.json()) as FileDiff;
 
-        // Update the file in the diff state with the full data
         setDiff((prev) =>
           prev
             ? {
@@ -407,6 +403,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     },
     [mode, compareBranch, prNumber, commitSha, fetchData, buildUrl],
   );
+
   const commit = useCallback(
     async (message: string) => {
       const res = await fetch(buildUrl("/api/commit"), {
@@ -427,6 +424,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     comments,
     notes,
     loading,
+    initialLoading,
     error,
     mode,
     setMode,

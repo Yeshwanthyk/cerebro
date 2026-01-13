@@ -33,7 +33,7 @@ export default function App() {
     diff,
     comments,
     notes,
-    loading,
+    initialLoading,
     error,
     mode,
     setMode,
@@ -674,7 +674,7 @@ export default function App() {
     );
   }
 
-  if (reposLoading || loading) {
+  if (reposLoading || initialLoading) {
     return (
       <div className="loading">
         <img src="/images/Cerebro.png" alt="Cerebro" className="loading-logo" />
