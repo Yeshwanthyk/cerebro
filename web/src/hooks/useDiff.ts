@@ -39,6 +39,7 @@ interface UseDiffResult {
   stageFile: (filePath: string) => Promise<void>;
   unstageFile: (filePath: string) => Promise<void>;
   discardFile: (filePath: string) => Promise<void>;
+  stageAllFiles: () => Promise<void>;
   commit: (message: string) => Promise<void>;
 }
 
@@ -167,19 +168,20 @@ export function useDiff(repoId?: string | null): UseDiffResult {
         const commentsData = commentsRes?.ok ? ((await commentsRes.json()) as Comment[]) : [];
         const notesData = notesRes?.ok ? ((await notesRes.json()) as Note[]) : [];
 
-        // Merge with existing file data to preserve loaded old_file/new_file
+        // Merge with existing file data to preserve lazy-loaded content
         setDiff((prevDiff) => {
           const mergedDiff = {
             ...diffData,
             files: diffData.files.map((newFile) => {
               const existingFile = prevDiff?.files.find((f) => f.path === newFile.path);
-              // Preserve loaded file data (patch, old_file, new_file)
-              if (existingFile?.patch || existingFile?.old_file || existingFile?.new_file) {
+              // Preserve lazy-loaded data only when new data is missing (branch mode)
+              // For working mode, server sends fresh patches - prefer those
+              if (existingFile) {
                 return {
                   ...newFile,
-                  patch: existingFile.patch || newFile.patch,
-                  old_file: existingFile.old_file,
-                  new_file: existingFile.new_file,
+                  patch: newFile.patch || existingFile.patch,
+                  old_file: newFile.old_file ?? existingFile.old_file,
+                  new_file: newFile.new_file ?? existingFile.new_file,
                 };
               }
               return newFile;
@@ -392,6 +394,19 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     [mode, compareBranch, prNumber, commitSha, fetchData, buildUrl],
   );
 
+  const stageAllFiles = useCallback(
+    async () => {
+      const res = await fetch(buildUrl("/api/stage-all"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to stage all");
+      }
+      await fetchData(mode, compareBranch, prNumber, commitSha);
+    },
+    [mode, compareBranch, prNumber, commitSha, fetchData, buildUrl],
+  );
   const commit = useCallback(
     async (message: string) => {
       const res = await fetch(buildUrl("/api/commit"), {
@@ -431,6 +446,7 @@ export function useDiff(repoId?: string | null): UseDiffResult {
     stageFile,
     unstageFile,
     discardFile,
+    stageAllFiles,
     commit,
   };
 }
