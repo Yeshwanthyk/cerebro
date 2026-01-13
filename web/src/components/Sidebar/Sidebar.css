@@ -1,7 +1,8 @@
+/* ===== SIDEBAR - Refined Dark ===== */
 .sidebar {
-  width: 280px;
-  min-width: 280px;
-  max-width: 280px;
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
   background: var(--color-bg-secondary);
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -29,46 +30,87 @@
 
 .branch-arrow {
   color: var(--color-muted);
+  font-size: 10px;
 }
 
 .branch-target {
   color: var(--color-accent);
 }
 
-/* Progress */
+/* ===== Progress - Refined ===== */
 .sidebar-progress {
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .progress-text {
-  font-size: 13px;
-  color: var(--color-text-secondary);
+  font-size: 12px;
+  color: var(--color-muted);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .progress-text strong {
   color: var(--color-text);
+  font-weight: 600;
 }
 
-/* File list container */
+/* Visual progress bar */
+.progress-bar {
+  flex: 1;
+  height: 3px;
+  background: var(--color-bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ===== File List Container ===== */
 .sidebar-files {
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
 }
 
+.sidebar-files::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-files::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-files::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.sidebar-files::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
 .sidebar-empty {
-  padding: 24px 16px;
+  padding: 32px 16px;
   text-align: center;
   color: var(--color-muted);
   font-size: 13px;
 }
 
-/* File groups (staged/unstaged) */
+/* ===== File Groups (staged/unstaged) ===== */
 .file-list-groups {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .file-group {
@@ -81,7 +123,26 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-muted);
-  padding: 8px 8px 4px;
+  padding: 10px 8px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.file-group-header::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-muted);
+}
+
+.file-group.staged .file-group-header::before {
+  background: var(--color-added);
+}
+
+.file-group.unstaged .file-group-header::before {
+  background: var(--color-modified);
 }
 
 .file-group-items {
@@ -98,20 +159,20 @@
   padding: 0 8px;
 }
 
-/* File row */
+/* ===== File Row - Refined ===== */
 .file-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 7px 10px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: background 0.1s ease;
+  transition: all 0.1s ease;
 }
 
 .file-row:hover {
@@ -120,8 +181,7 @@
 
 .file-row.focused {
   background: var(--color-bg-tertiary);
-  outline: 1px solid var(--color-accent);
-  outline-offset: -1px;
+  box-shadow: inset 0 0 0 1px var(--color-accent);
 }
 
 .file-row.selected {
@@ -129,21 +189,22 @@
 }
 
 .file-row.selected.focused {
-  outline-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
 }
 
 .file-row-content {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   flex: 1;
 }
 
 .reviewed-mark {
   color: var(--color-accent);
-  font-size: 11px;
+  font-size: 12px;
   flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .file-row-name {
@@ -158,53 +219,57 @@
 
 .file-row-path {
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-muted);
+  font-size: 11px;
+  color: var(--color-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: none; /* Only show on hover/focus */
-}
-
-.file-row:hover .file-row-name,
-.file-row.selected .file-row-name,
-.file-row.focused .file-row-name {
   display: none;
 }
 
-.file-row:hover .file-row-path,
-.file-row.selected .file-row-path,
-.file-row.focused .file-row-path {
+/* Only swap name for path when path exists */
+.file-row.has-path:hover .file-row-name,
+.file-row.has-path.selected .file-row-name,
+.file-row.has-path.focused .file-row-name {
+  display: none;
+}
+
+.file-row.has-path:hover .file-row-path,
+.file-row.has-path.selected .file-row-path,
+.file-row.has-path.focused .file-row-path {
   display: block;
 }
 
+/* Status badge */
 .file-row-badge {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   padding: 2px 5px;
   border-radius: 3px;
   flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .file-row-badge.status-added {
   color: var(--color-added);
-  background: color-mix(in srgb, var(--color-added) 15%, transparent);
+  background: rgba(74, 222, 128, 0.12);
 }
 
 .file-row-badge.status-modified {
   color: var(--color-modified);
-  background: color-mix(in srgb, var(--color-modified) 15%, transparent);
+  background: rgba(251, 191, 36, 0.12);
 }
 
 .file-row-badge.status-deleted {
   color: var(--color-deleted);
-  background: color-mix(in srgb, var(--color-deleted) 15%, transparent);
+  background: rgba(248, 113, 113, 0.12);
 }
 
 .file-row-badge.status-renamed {
   color: var(--color-renamed);
-  background: color-mix(in srgb, var(--color-renamed) 15%, transparent);
+  background: rgba(167, 139, 250, 0.12);
 }
 
 .file-row-badge.status-untracked {
@@ -212,52 +277,25 @@
   background: var(--color-bg-tertiary);
 }
 
-/* Commit box */
+/* ===== Commit Box - Simplified ===== */
 .commit-box {
-  padding: 12px;
+  padding: 14px;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-secondary);
 }
 
-.commit-type-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.commit-type-btn {
-  padding: 3px 6px;
-  font-size: 10px;
-  font-family: var(--font-mono);
-  border: none;
-  border-radius: 4px;
-  background: var(--color-bg-tertiary);
-  color: var(--color-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.commit-type-btn:hover {
-  color: var(--color-text-secondary);
-}
-
-.commit-type-btn.active {
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-}
-
 .commit-input {
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg-tertiary);
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   resize: none;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
 }
 
 .commit-input:focus {
@@ -276,12 +314,13 @@
 
 .stage-all-btn {
   flex: 1;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -289,14 +328,15 @@
 .stage-all-btn:hover {
   background: var(--color-bg-tertiary);
   color: var(--color-text);
+  border-color: var(--color-text-secondary);
 }
 
 .commit-btn-primary {
   flex: 1;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: none;
-  border-radius: 6px;
-  background: var(--color-added);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
   color: white;
   font-size: 12px;
   font-weight: 500;

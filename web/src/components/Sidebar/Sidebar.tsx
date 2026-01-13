@@ -28,6 +28,8 @@ export function Sidebar({
 }: SidebarProps) {
   const viewedCount = files.filter((f) => f.viewed).length;
   const stagedCount = files.filter((f) => f.staged).length;
+  const totalCount = files.length;
+  const progressPercent = totalCount > 0 ? (viewedCount / totalCount) * 100 : 0;
 
   return (
     <aside className="sidebar">
@@ -40,11 +42,19 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Progress */}
+      {/* Progress with visual bar */}
       <div className="sidebar-progress">
         <span className="progress-text">
-          <strong>{viewedCount}</strong> of <strong>{files.length}</strong> reviewed
+          <strong>{viewedCount}</strong> of <strong>{totalCount}</strong> reviewed
         </span>
+        {totalCount > 0 && (
+          <div className="progress-bar">
+            <div 
+              className="progress-bar-fill" 
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {/* File list */}
