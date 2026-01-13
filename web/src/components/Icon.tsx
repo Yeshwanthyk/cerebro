@@ -33,6 +33,8 @@ const icons = {
     "M5.63 18.37l4.25-4.25M14.12 9.88l4.25-4.25",
   ],
   refresh: ["M23 4v6h-6", "M1 20v-6h6", "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"],
+  circle: "circle:12,12,10",
+  "check-circle": ["circle:12,12,10", "M9 12l2 2 4-4"],
 } as const;
 
 function renderPath(path: string): ReactNode {
