@@ -14,6 +14,7 @@ import {
   handleMarkViewed,
   handleUnmarkViewed,
   handleStage,
+  handleStageAll,
   handleUnstage,
   handleDiscard,
   handleCommit,
@@ -63,6 +64,7 @@ export const routes: Route[] = [
 
   // Git operations
   { path: "/api/stage", method: "POST", handler: async (req, url) => handleStage(req, url) },
+  { path: "/api/stage-all", method: "POST", handler: async (_req, url) => handleStageAll(_req, url) },
   { path: "/api/unstage", method: "POST", handler: async (req, url) => handleUnstage(req, url) },
   { path: "/api/discard", method: "POST", handler: async (req, url) => handleDiscard(req, url) },
   { path: "/api/commit", method: "POST", handler: async (req, url) => handleCommit(req, url) },

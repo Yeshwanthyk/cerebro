@@ -64,3 +64,14 @@ export async function handleCommit(req: Request, url: URL): Promise<Response> {
   const commitHash = await git.commit(validation.data.message);
   return Response.json({ commit: commitHash });
 }
+
+export async function handleStageAll(_req: Request, url: URL): Promise<Response> {
+  const repo = await getCurrentRepoFromRequest(url);
+  if (!repo) {
+    return noRepoError();
+  }
+
+  const git = getGitManager(repo.path);
+  await git.stageAll();
+  return Response.json({ success: true });
+}

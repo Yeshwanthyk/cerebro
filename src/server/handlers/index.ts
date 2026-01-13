@@ -21,7 +21,7 @@ export { handleGetDiff, handleGetFileDiff } from "./diff";
 export { handleMarkViewed, handleUnmarkViewed } from "./viewed";
 
 // Git operations
-export { handleStage, handleUnstage, handleDiscard, handleCommit } from "./git-ops";
+export { handleStage, handleStageAll, handleUnstage, handleDiscard, handleCommit } from "./git-ops";
 
 // Comments
 export { handleGetComments, handleAddComment, handleResolveComment } from "./comments";

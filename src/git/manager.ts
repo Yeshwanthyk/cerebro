@@ -115,6 +115,10 @@ export function createGitManager(repoPath: string, git: SimpleGit): GitManager {
       await git.add(filePath);
     },
 
+    async stageAll(): Promise<void> {
+      await git.add(".");
+    },
+
     async unstageFile(filePath: string): Promise<void> {
       await git.reset(["HEAD", "--", filePath]);
     },

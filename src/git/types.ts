@@ -15,6 +15,7 @@ export interface GitManager {
   getRemoteUrl(): Promise<string | undefined>;
   getBranches(): Promise<string[]>;
   stageFile(filePath: string): Promise<void>;
+  stageAll(): Promise<void>;
   unstageFile(filePath: string): Promise<void>;
   discardFile(filePath: string): Promise<void>;
   commit(message: string): Promise<string>;
