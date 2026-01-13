@@ -43,7 +43,7 @@ export function PRPicker({
           className="pr-back-btn"
           onClick={onClearSelection}
         >
-          ← Back to PRs
+          ← PRs
         </button>
         <div className="pr-selected-info">
           <span className="pr-number">#{selectedPRData.number}</span>
@@ -56,7 +56,7 @@ export function PRPicker({
             onClick={onOpenInBrowser}
             title="Open in GitHub (O)"
           >
-            Open in GitHub
+            Open ↗
           </button>
         )}
       </div>
@@ -87,12 +87,10 @@ export function PRPicker({
         </div>
       )}
 
-      {loading && <div className="pr-loading">Loading PRs...</div>}
+      {loading && <div className="pr-loading">Loading...</div>}
 
       {!loading && error === null && prs.length === 0 && (
-        <div className="pr-empty">
-          No {FILTER_LABELS[filter].toLowerCase()} found
-        </div>
+        <div className="pr-empty">No pull requests</div>
       )}
 
       {!loading && error === null && prs.length > 0 && (
@@ -104,15 +102,19 @@ export function PRPicker({
                 className={`pr-item ${selectedPR === pr.number ? "selected" : ""}`}
                 onClick={() => onSelectPR(pr.number)}
               >
-                <span className="pr-number">#{pr.number}</span>
-                <span className="pr-title">{pr.title}</span>
-                <span className="pr-meta">
-                  {pr.headRefName} → {pr.baseRefName}
-                </span>
-                <span className="pr-stats">
-                  <span className="pr-additions">+{pr.additions}</span>
-                  <span className="pr-deletions">-{pr.deletions}</span>
-                </span>
+                <div className="pr-item-header">
+                  <span className="pr-number">#{pr.number}</span>
+                  <span className="pr-title">{pr.title}</span>
+                </div>
+                <div className="pr-item-footer">
+                  <span className="pr-meta">
+                    {pr.headRefName} → {pr.baseRefName}
+                  </span>
+                  <span className="pr-stats">
+                    <span className="pr-additions">+{pr.additions}</span>
+                    <span className="pr-deletions">−{pr.deletions}</span>
+                  </span>
+                </div>
               </button>
             </li>
           ))}
