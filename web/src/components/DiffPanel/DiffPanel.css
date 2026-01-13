@@ -1,3 +1,4 @@
+/* ===== DIFF PANEL - Refined Dark ===== */
 .diff-panel {
   flex: 1;
   display: flex;
@@ -5,6 +6,7 @@
   min-width: 0;
   height: 100%;
   overflow: hidden;
+  background: var(--color-bg);
 }
 
 /* Diff header */
@@ -38,8 +40,10 @@
 
 .diff-file-stats {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   flex-shrink: 0;
+  display: flex;
+  gap: 8px;
 }
 
 .diff-file-stats .additions {
@@ -48,7 +52,6 @@
 
 .diff-file-stats .deletions {
   color: var(--color-deleted);
-  margin-left: 6px;
 }
 
 .diff-header-right {
@@ -64,7 +67,7 @@
   gap: 5px;
   padding: 5px 10px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   font-size: 12px;
@@ -79,17 +82,17 @@
 
 .diff-header-btn.active {
   background: var(--color-accent-soft);
-  border-color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
   color: var(--color-accent);
 }
 
 .diff-header-btn.stage {
   color: var(--color-added);
-  border-color: var(--color-added);
+  border-color: color-mix(in srgb, var(--color-added) 40%, transparent);
 }
 
 .diff-header-btn.stage:hover {
-  background: color-mix(in srgb, var(--color-added) 15%, transparent);
+  background: rgba(74, 222, 128, 0.1);
 }
 
 .diff-header-btn.discard {
@@ -99,8 +102,8 @@
 }
 
 .diff-header-btn.discard:hover {
-  background: color-mix(in srgb, var(--color-deleted) 15%, transparent);
-  border-color: var(--color-deleted);
+  background: rgba(248, 113, 113, 0.1);
+  border-color: color-mix(in srgb, var(--color-deleted) 40%, transparent);
 }
 
 .diff-header-btn.reviewed {
@@ -109,7 +112,7 @@
 
 .diff-header-btn.reviewed.active {
   background: var(--color-accent-soft);
-  border-color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
   color: var(--color-accent);
 }
 
@@ -138,25 +141,43 @@
   font-size: 13px;
 }
 
-/* Welcome panel */
+/* ===== Welcome Panel - Refined Empty State ===== */
 .welcome-panel {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-bg);
+  position: relative;
+}
+
+/* Subtle background pattern */
+.welcome-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    var(--color-bg-tertiary) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .welcome-panel-content {
   text-align: center;
-  padding: 40px;
+  padding: 48px;
+  position: relative;
+  z-index: 1;
 }
 
 .welcome-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--color-text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 24px;
 }
 
 .welcome-subtitle {
@@ -164,19 +185,23 @@
   color: var(--color-muted);
 }
 
+/* Keyboard shortcuts - refined */
 .welcome-shortcuts {
-  margin-top: 24px;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding: 16px 24px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .shortcut-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 12px;
   color: var(--color-text-secondary);
 }
 
@@ -184,9 +209,17 @@
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
   border-radius: 4px;
-  padding: 2px 8px;
+  padding: 3px 8px;
   font-family: var(--font-mono);
   font-size: 11px;
   min-width: 24px;
   text-align: center;
+  color: var(--color-text);
+  box-shadow: 0 1px 0 var(--color-border);
+}
+
+.shortcut-row span {
+  color: var(--color-muted);
+  min-width: 100px;
+  text-align: left;
 }
