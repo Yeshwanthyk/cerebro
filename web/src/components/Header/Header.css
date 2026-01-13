@@ -1,14 +1,17 @@
-/* Header */
+/* ===== HEADER - Refined Dark ===== */
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
+  align-items: center;
+  padding-bottom: 16px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .header-logo {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
 }
 
 .header-left {
@@ -19,39 +22,40 @@
 
 .header-separator {
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: var(--color-border);
   margin: 0 4px;
 }
 
 .branch {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-secondary);
 }
 
 .commit {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-muted);
 }
 
 .header-right {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
-/* Mode Switcher */
+/* ===== Mode Switcher - Clean tabs ===== */
 .mode-switcher {
   display: flex;
   background: var(--color-bg-tertiary);
   border-radius: var(--radius);
   padding: 3px;
+  gap: 2px;
 }
 
 .mode-switcher button {
-  padding: 6px 12px;
+  padding: 6px 14px;
   border: none;
   background: transparent;
   color: var(--color-muted);
@@ -59,59 +63,61 @@
   font-weight: 500;
   cursor: pointer;
   border-radius: 5px;
-  min-width: 70px;
-  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.mode-switcher button:hover:not(.active) {
+  color: var(--color-text-secondary);
 }
 
 .mode-switcher button.active {
   background: var(--color-bg-secondary);
   color: var(--color-text);
+  box-shadow: var(--shadow-sm);
 }
 
+/* Hide count badges - cleaner look */
 .mode-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  margin-left: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--color-bg-tertiary);
-  border-radius: 9px;
+  display: none;
 }
 
-.mode-switcher button.active .mode-count {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-}
-
+/* ===== Header Buttons ===== */
 .view-toggle,
 .commit-btn {
-  padding: 8px 12px;
+  padding: 7px 12px;
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
   font-size: 12px;
-  border-radius: var(--radius);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-toggle:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
 }
 
 .view-toggle.active {
   background: var(--color-accent-soft);
   color: var(--color-accent);
-  border-color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
 }
 
 .commit-btn {
-  background: transparent;
   color: var(--color-added);
-  border: 1px solid var(--color-added);
+  border-color: color-mix(in srgb, var(--color-added) 40%, transparent);
 }
 
 .commit-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-added) 15%, transparent);
+  background: rgba(74, 222, 128, 0.1);
+  border-color: var(--color-added);
 }
 
 .commit-btn:disabled {
@@ -119,16 +125,19 @@
   pointer-events: none;
 }
 
-/* Branch Comparison */
+/* ===== Branch Comparison ===== */
 .branch-comparison {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
 }
 
 .compare-arrow {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-muted);
 }
 
@@ -137,67 +146,64 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 4px 10px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
 }
 
 .branch-selector-btn {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 2px 6px;
+  margin: -2px -6px;
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-accent);
   font-size: 12px;
   font-family: var(--font-mono);
-  border-radius: var(--radius);
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .branch-selector-btn:hover {
-  background: var(--color-bg-tertiary);
-  color: var(--color-text);
+  background: var(--color-accent-soft);
 }
 
 .dropdown-arrow {
   font-size: 8px;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .branch-picker {
   position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 4px;
+  top: calc(100% + 4px);
+  right: 0;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 4px;
   z-index: 100;
-  max-height: 300px;
+  max-height: 280px;
   overflow-y: auto;
-  min-width: 200px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-@media (prefers-color-scheme: dark) {
-  .branch-picker {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
+  min-width: 180px;
+  box-shadow: var(--shadow-lg);
 }
 
 .branch-picker button {
   display: block;
   width: 100%;
-  padding: 8px 12px;
+  padding: 7px 10px;
   border: none;
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   font-family: var(--font-mono);
   text-align: left;
   cursor: pointer;
   border-radius: 4px;
+  transition: all 0.1s;
 }
 
 .branch-picker button:hover {
@@ -210,47 +216,53 @@
   color: var(--color-accent);
 }
 
-/* PR Info */
+/* ===== PR Info ===== */
 .pr-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 4px 10px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
 }
 
 .pr-badge {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-accent);
 }
 
 .pr-title-header {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-secondary);
-  max-width: 300px;
+  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Commit Info */
+/* ===== Commit Info ===== */
 .commit-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 4px 10px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
 }
 
 .commit-badge {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-accent);
 }
 
 .commit-title-header {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-secondary);
-  max-width: 300px;
+  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

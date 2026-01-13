@@ -5,13 +5,6 @@ import { RepoPicker } from "../RepoPicker";
 import type { DiffMode, Repository, DiffResponse } from "../../api/types";
 import "./Header.css";
 
-interface ModeCounts {
-  branch: number | null;
-  working: number | null;
-  pr: number | null;
-  commit: number | null;
-}
-
 interface HeaderProps {
   repos: Repository[];
   currentRepo: string | null;
@@ -21,7 +14,12 @@ interface HeaderProps {
   branches: string[];
   compareBranch: string | null;
   hasStaged: boolean;
-  modeCounts: ModeCounts;
+  modeCounts: {
+    branch: number | null;
+    working: number | null;
+    pr: number | null;
+    commit: number | null;
+  };
   onRepoSelect: (id: string) => void;
   onAddRepo: (path: string) => Promise<void>;
   onRemoveRepo: (id: string) => void;
@@ -43,7 +41,6 @@ export function Header({
   branches,
   compareBranch,
   hasStaged,
-  modeCounts,
   onRepoSelect,
   onAddRepo,
   onRemoveRepo,
@@ -57,11 +54,6 @@ export function Header({
 }: HeaderProps) {
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const currentRepoData = repos.find((r) => r.id === currentRepo);
-
-  const renderCount = (count: number | null) => {
-    if (count === null || count === 0) return null;
-    return <span className="mode-count">{count}</span>;
-  };
 
   // Close branch picker on click outside
   useEffect(() => {
@@ -89,28 +81,28 @@ export function Header({
             className={mode === "working" ? "active" : ""}
             onClick={() => onModeChange("working")}
           >
-            Local{renderCount(modeCounts.working)}
+            Local
           </button>
           <button
             type="button"
             className={mode === "branch" ? "active" : ""}
             onClick={() => onModeChange("branch")}
           >
-            Branch{renderCount(modeCounts.branch)}
+            Branch
           </button>
           <button
             type="button"
             className={mode === "commit" ? "active" : ""}
             onClick={() => onModeChange("commit")}
           >
-            Commits{renderCount(modeCounts.commit)}
+            Commits
           </button>
           <button
             type="button"
             className={mode === "pr" ? "active" : ""}
             onClick={() => onModeChange("pr")}
           >
-            PRs{renderCount(modeCounts.pr)}
+            PRs
           </button>
         </div>
         {mode === "branch" && (
